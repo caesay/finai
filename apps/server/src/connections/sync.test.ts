@@ -100,6 +100,7 @@ function transaction(remoteId: string, postedAt: string, amountMinor: number): R
     remoteId,
     postedAt,
     description: `Payment ${remoteId}`,
+    notes: null,
     amountMinor,
     currency: 'GBP',
     isPending: false,

@@ -31,6 +31,11 @@ export interface RemoteTransaction {
   /** ISO date (YYYY-MM-DD). */
   postedAt: string;
   description: string;
+  /**
+   * A second label for the same transaction, when the provider carries one and
+   * it says something the description does not.
+   */
+  notes: string | null;
   /** Integer minor units; negative is money leaving the account. */
   amountMinor: number;
   currency: string | null;

@@ -170,6 +170,7 @@ async function syncAccount(
       description: row.description,
       amountMinor: connection.settings.invertAmounts ? -row.amountMinor : row.amountMinor,
       externalId: reference,
+      notes: row.notes,
     });
 
     await runAutomationsForTransaction(

@@ -115,17 +115,32 @@ function toRemoteAccount(account: LunchflowAccount): RemoteAccount {
   };
 }
 
-/** Rows without a date or amount cannot become transactions, so they are dropped. */
+/**
+ * Rows without a date or amount cannot become transactions, so they are dropped.
+ *
+ * LunchFlow sends two labels and neither is reliably the better one, so both are
+ * kept. `description` is the bank's own narrative and leads, because it is the
+ * only one that names the other party on money coming in: `merchant` is filled
+ * from the creditor, which on a credit is you, so an incoming transfer would
+ * otherwise be filed under your own name. `merchant` becomes the note, where it
+ * still reads well and stays searchable — it is usually the tidier of the two on
+ * card spending.
+ */
 function toRemoteTransaction(row: LunchflowTransaction): RemoteTransaction | null {
   const date = row.date?.slice(0, 10);
   if (!date || typeof row.amount !== 'number') return null;
 
-  const description = row.merchant?.trim() || row.description?.trim() || 'Transaction';
+  const merchant = row.merchant?.trim() ?? '';
+  const narrative = row.description?.trim() ?? '';
+  const description = narrative || merchant || 'Transaction';
 
   return {
     remoteId: typeof row.id === 'string' && row.id !== '' ? row.id : null,
     postedAt: date,
     description,
+    // Most feeds repeat themselves across the two fields; a note that only
+    // echoes the description is noise.
+    notes: merchant && merchant !== description ? merchant : null,
     amountMinor: toMinor(row.amount),
     currency: row.currency?.toUpperCase() ?? null,
     isPending: row.isPending === true,
