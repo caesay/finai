@@ -1011,8 +1011,8 @@ tr:hover .icon-button,
 .chat__panel {
   display: flex;
   flex-direction: column;
-  width: min(26rem, calc(100vw - 2.5rem));
-  height: min(34rem, calc(100vh - 8rem));
+  width: min(34rem, calc(100vw - 2.5rem));
+  height: min(44rem, calc(100vh - 6rem));
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   background: var(--bg-raised);
@@ -1134,9 +1134,14 @@ tr:hover .icon-button,
   border-top: 1px solid var(--line);
 }
 
+/* Tall enough for the prefilled categorisation question to land without
+   scrolling, and free to grow from there. */
 .chat__input {
   flex: 1;
-  resize: none;
+  resize: vertical;
+  min-height: 5.5rem;
+  max-height: 16rem;
+  line-height: 1.5;
 }
 
 @media (max-width: 60rem) {

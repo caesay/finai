@@ -190,7 +190,7 @@ function Composer({
       <textarea
         ref={inputRef}
         className="chat__input"
-        rows={2}
+        rows={4}
         value={draft}
         placeholder="Ask a question…"
         onChange={(event) => onDraftChange(event.target.value)}
