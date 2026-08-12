@@ -23,6 +23,8 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOST=0.0.0.0 \
     WEB_DIST=/app/apps/web/dist \
+    # Persisted application state (chat transcripts today, the database later).
+    DATA_DIR=/data \
     # Codex CLI stores its config and OAuth credentials here. Mount a volume at
     # this path so `codex login` survives container restarts and image updates.
     CODEX_HOME=/data/codex

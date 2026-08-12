@@ -1,12 +1,17 @@
 import { Route, Routes } from 'react-router-dom';
 
-import { HomePage } from './pages/HomePage.js';
+import { ChatWidget } from './chat/ChatWidget.js';
+import { Shell } from './components/Shell.js';
+import { DashboardPage } from './pages/DashboardPage.js';
 
 export function App() {
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="*" element={<HomePage />} />
-    </Routes>
+    <Shell>
+      <Routes>
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="*" element={<DashboardPage />} />
+      </Routes>
+      <ChatWidget />
+    </Shell>
   );
 }

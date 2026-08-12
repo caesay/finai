@@ -1,5 +1,5 @@
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import { z } from 'zod';
 
@@ -23,6 +23,10 @@ const envSchema = z.object({
   CODEX_HOME: z.string().optional(),
   /** Explicit path to the `codex` binary when it is not on PATH. */
   CODEX_PATH: z.string().optional(),
+  /** Model the agent runs on. Unset means the Codex CLI default. */
+  CODEX_MODEL: z.string().optional(),
+  /** Root for persisted application state (chat transcripts, later the database). */
+  DATA_DIR: z.string().default('./data'),
 });
 
 export type Config = {
@@ -34,6 +38,8 @@ export type Config = {
   webDist: string | undefined;
   codexHome: string;
   codexPath: string | undefined;
+  codexModel: string | undefined;
+  dataDir: string;
   version: string;
 };
 
@@ -58,6 +64,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     webDist: value.WEB_DIST,
     codexHome: value.CODEX_HOME ?? join(homedir(), '.codex'),
     codexPath: value.CODEX_PATH,
+    codexModel: value.CODEX_MODEL,
+    dataDir: resolve(value.DATA_DIR),
     version: env.npm_package_version ?? '0.0.1',
   };
 }

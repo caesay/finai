@@ -2,8 +2,11 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import fastifyStatic from '@fastify/static';
+import type { Codex } from '@openai/codex-sdk';
 import Fastify, { type FastifyInstance } from 'fastify';
 
+import { ChatStore } from './chat/store.js';
+import { createCodex } from './codex/client.js';
 import type { Config } from './config.js';
 import { registerRoutes } from './routes/index.js';
 
@@ -18,7 +21,12 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
     trustProxy: true,
   });
 
+  const chatStore = new ChatStore(config.dataDir);
+  await chatStore.init();
+
   app.decorate('config', config);
+  app.decorate('codex', createCodex(config));
+  app.decorate('chatStore', chatStore);
 
   await app.register(registerRoutes, { prefix: '/api' });
 
@@ -59,5 +67,7 @@ async function registerWebClient(app: FastifyInstance, config: Config): Promise<
 declare module 'fastify' {
   interface FastifyInstance {
     config: Config;
+    codex: Codex;
+    chatStore: ChatStore;
   }
 }
