@@ -9,9 +9,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   /** Bind address. 0.0.0.0 so the container is reachable from the host. */
   HOST: z.string().default('0.0.0.0'),
-  LOG_LEVEL: z
-    .enum(['silent', 'fatal', 'error', 'warn', 'info', 'debug', 'trace'])
-    .default('info'),
+  LOG_LEVEL: z.enum(['silent', 'fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   /**
    * Absolute or relative path to the built web client. When set, the server
    * serves it as static files and handles SPA fallback.
