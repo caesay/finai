@@ -11,7 +11,8 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "concurrently -n server,web -c blue,magenta \"npm:dev:server\" \"npm:dev:web\"",
+    "dev": "npm run build -w @finai/shared && concurrently -n shared,server,web -c gray,blue,magenta \"npm:dev:shared\" \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:shared": "npm run dev -w @finai/shared",
     "dev:server": "npm run dev -w @finai/server",
     "dev:web": "npm run dev -w @finai/web",
     "build": "npm run build -w @finai/shared && npm run build -w @finai/server && npm run build -w @finai/web",
