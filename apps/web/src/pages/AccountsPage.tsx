@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 
 import { createAccount, deleteAccount, listAccounts } from '../api/finance.js';
 import { PageHeader } from '../components/Shell.js';
+import { LoadingLine, Spinner } from '../components/Spinner.js';
 import { formatDateTime, formatMoney, parseMoney } from '../lib/money.js';
 
 /** Simple list of accounts — the rich table lives on the Transactions page. */
@@ -34,7 +35,7 @@ export function AccountsPage() {
 
       {isAdding && <AccountForm onDone={() => setAdding(false)} />}
 
-      {accounts.isPending && <p className="dim">Loading accounts…</p>}
+      {accounts.isPending && <LoadingLine>Loading accounts…</LoadingLine>}
       {accounts.isError && <p className="error">{accounts.error.message}</p>}
 
       {accounts.data?.length === 0 && (
@@ -67,6 +68,7 @@ export function AccountsPage() {
                 <button
                   type="button"
                   className="button button--ghost"
+                  disabled={remove.isPending && remove.variables === account.id}
                   onClick={() => {
                     // Deleting an account also deletes its transactions.
                     if (
@@ -78,6 +80,9 @@ export function AccountsPage() {
                     }
                   }}
                 >
+                  {remove.isPending && remove.variables === account.id && (
+                    <Spinner label="Deleting this account" />
+                  )}
                   delete
                 </button>
               </div>
@@ -199,6 +204,7 @@ function AccountForm({ onDone }: { onDone: () => void }) {
 
       <div className="form__actions">
         <button type="submit" className="button" disabled={create.isPending}>
+          {create.isPending && <Spinner label="Saving the account" />}
           {create.isPending ? 'saving' : 'save'}
         </button>
         {openingBalanceMinor === null && (

@@ -11,6 +11,7 @@ import {
   updateConnection,
 } from '../api/connections.js';
 import { PageHeader } from '../components/Shell.js';
+import { LoadingLine, Spinner } from '../components/Spinner.js';
 import { formatDateTime } from '../lib/money.js';
 
 const PROVIDERS: { id: ConnectionProviderId; label: string; hint: string }[] = [
@@ -44,7 +45,7 @@ export function ConnectionsPage() {
 
       {isAdding && <ConnectionForm onDone={() => setAdding(false)} />}
 
-      {connections.isPending && <p className="dim">Loading connections…</p>}
+      {connections.isPending && <LoadingLine>Loading connections…</LoadingLine>}
       {connections.isError && <p className="error">{connections.error.message}</p>}
 
       {connections.data?.length === 0 && !isAdding && (
@@ -145,6 +146,7 @@ function ConnectionCard({ connection }: { connection: Connection }) {
             disabled={sync.isPending}
             onClick={() => sync.mutate()}
           >
+            {sync.isPending && <Spinner label="Syncing this connection" />}
             {sync.isPending ? 'syncing' : 'sync now'}
           </button>
           <button
@@ -157,6 +159,7 @@ function ConnectionCard({ connection }: { connection: Connection }) {
           <button
             type="button"
             className="button button--ghost"
+            disabled={remove.isPending}
             onClick={() => {
               // Accounts and their transactions survive; only the feed goes.
               if (confirm(`Remove ${connection.name}? Its accounts and transactions stay.`)) {
@@ -164,7 +167,8 @@ function ConnectionCard({ connection }: { connection: Connection }) {
               }
             }}
           >
-            remove
+            {remove.isPending && <Spinner label="Removing this connection" />}
+            {remove.isPending ? 'removing' : 'remove'}
           </button>
         </div>
       </div>
@@ -246,6 +250,7 @@ function ConnectionSettings({
 
       <div className="form__actions">
         <button type="submit" className="button" disabled={save.isPending}>
+          {save.isPending && <Spinner label="Saving connection settings" />}
           {save.isPending ? 'saving' : 'save'}
         </button>
         {/* A pending row carries no stable id, so it can never be imported —
@@ -321,6 +326,7 @@ function ConnectionForm({ onDone }: { onDone: () => void }) {
 
       <div className="form__actions">
         <button type="submit" className="button" disabled={create.isPending}>
+          {create.isPending && <Spinner label="Checking the API key" />}
           {create.isPending ? 'checking the key' : 'connect'}
         </button>
         <span className="form__hint dim">{hint}</span>

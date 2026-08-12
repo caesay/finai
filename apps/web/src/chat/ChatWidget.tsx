@@ -1,6 +1,7 @@
 import type { ChatActivity, ChatMessage, RuleProposal } from '@finai/shared';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
+import { Spinner } from '../components/Spinner.js';
 import { AssistantIcon } from '../components/icons.js';
 import { formatMoney } from '../lib/money.js';
 import { useChatController } from './ChatContext.js';
@@ -99,7 +100,11 @@ function Transcript({
 
   return (
     <div className="chat__transcript">
-      {isLoading && <p className="chat__hint">restoring session…</p>}
+      {isLoading && (
+        <p className="chat__hint loading-line">
+          <Spinner /> <span>restoring session…</span>
+        </p>
+      )}
 
       {!isLoading && messages.length === 0 && (
         <p className="chat__hint">
@@ -122,7 +127,11 @@ function Transcript({
         </div>
       ))}
 
-      {isProposing && <p className="chat__hint">Reviewing that month of transactions…</p>}
+      {isProposing && (
+        <p className="chat__hint loading-line">
+          <Spinner /> <span>Reviewing that month of transactions…</span>
+        </p>
+      )}
 
       {activities.length > 0 && (
         <div className="chat__activity">
@@ -135,7 +144,11 @@ function Transcript({
         </div>
       )}
 
-      {isStreaming && activities.length === 0 && <p className="chat__hint">thinking…</p>}
+      {isStreaming && activities.length === 0 && (
+        <p className="chat__hint loading-line">
+          <Spinner /> <span>thinking…</span>
+        </p>
+      )}
 
       <div ref={endRef} />
     </div>

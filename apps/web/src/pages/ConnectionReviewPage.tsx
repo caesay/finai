@@ -14,6 +14,7 @@ import { Link, useParams } from 'react-router-dom';
 import { reviewConnection, saveConnectionLinks, syncConnection } from '../api/connections.js';
 import { listAccounts } from '../api/finance.js';
 import { PageHeader } from '../components/Shell.js';
+import { LoadingLine, Spinner } from '../components/Spinner.js';
 import { formatMoney } from '../lib/money.js';
 
 /**
@@ -94,7 +95,7 @@ export function ConnectionReviewPage() {
       />
 
       {review.isPending && (
-        <p className="dim">Listing the accounts at the provider and working out the mapping…</p>
+        <LoadingLine>Listing the accounts at the provider and working out the mapping…</LoadingLine>
       )}
       {review.isError && <p className="error">{review.error.message}</p>}
 
@@ -191,6 +192,7 @@ export function ConnectionReviewPage() {
                   }
                   onClick={() => confirm.mutate()}
                 >
+                  {confirm.isPending && <Spinner label="Importing from the provider" />}
                   {confirm.isPending ? 'importing' : 'confirm and import'}
                 </button>
               </div>

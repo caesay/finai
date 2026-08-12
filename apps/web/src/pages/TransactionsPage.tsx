@@ -13,6 +13,7 @@ import {
 import { useChatController } from '../chat/ChatContext.js';
 import { ImportDialog } from '../components/ImportDialog.js';
 import { PageHeader } from '../components/Shell.js';
+import { LoadingLine, Spinner } from '../components/Spinner.js';
 import { CheckIcon, CloseIcon, EditIcon, SparkleIcon } from '../components/icons.js';
 import { formatDate, formatMoney } from '../lib/money.js';
 
@@ -118,6 +119,9 @@ export function TransactionsPage() {
             <CategoryCell
               transaction={context.row.original}
               categories={categories.data ?? []}
+              isSaving={
+                recategorize.isPending && recategorize.variables.id === context.row.original.id
+              }
               onChange={(categoryId) =>
                 recategorize.mutate({ id: context.row.original.id, categoryId })
               }
@@ -308,10 +312,20 @@ export function TransactionsPage() {
               </tr>
             ))}
 
-            {transactions.data?.items.length === 0 && (
+            {/* The first load has no data at all, so the message cannot hang off
+                an empty items array. */}
+            {transactions.isPending && (
+              <tr>
+                <td colSpan={6} className="table__empty">
+                  <LoadingLine>Loading transactions…</LoadingLine>
+                </td>
+              </tr>
+            )}
+
+            {!transactions.isPending && transactions.data?.items.length === 0 && (
               <tr>
                 <td colSpan={6} className="dim table__empty">
-                  {transactions.isPending ? 'Loading…' : 'No transactions match this view.'}
+                  No transactions match this view.
                 </td>
               </tr>
             )}
@@ -331,6 +345,11 @@ export function TransactionsPage() {
         </div>
 
         <div className="pager">
+          {/* Paging, sorting and searching all refetch while the current page
+              stays on screen; without this the table just looks stale. */}
+          {transactions.isFetching && !transactions.isPending && (
+            <Spinner label="Refreshing transactions" />
+          )}
           <span className="label">
             {transactions.data?.total ?? 0} rows · page {page} of {totalPages}
           </span>
@@ -376,11 +395,13 @@ export function TransactionsPage() {
 function CategoryCell({
   transaction,
   categories,
+  isSaving,
   onChange,
   onAsk,
 }: {
   transaction: Transaction;
   categories: Category[];
+  isSaving: boolean;
   onChange: (categoryId: string | null) => void;
   onAsk: () => void;
 }) {
@@ -444,14 +465,20 @@ function CategoryCell({
         {transaction.categoryName ?? 'uncategorized'}
       </span>
 
-      <button
-        type="button"
-        className="icon-button"
-        aria-label="Change category"
-        onClick={() => setEditing(true)}
-      >
-        <EditIcon size={14} />
-      </button>
+      {/* The row keeps showing the old category until the server confirms the
+          new one, so the wait belongs on the row itself. */}
+      {isSaving ? (
+        <Spinner label="Saving the category" />
+      ) : (
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Change category"
+          onClick={() => setEditing(true)}
+        >
+          <EditIcon size={14} />
+        </button>
+      )}
 
       <button
         type="button"

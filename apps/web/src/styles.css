@@ -811,6 +811,77 @@ tr:hover .icon-button,
   }
 }
 
+/* ---------- spinner ---------- */
+
+.spinner {
+  display: inline-flex;
+  flex: none;
+  color: var(--accent);
+}
+
+.spinner svg {
+  display: block;
+  overflow: visible;
+}
+
+.spinner__track {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 2;
+}
+
+.spinner__arc {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  /* Without an explicit box the rotation origin is the element's own bounding
+     box in some browsers, which makes the arc wobble instead of spin. */
+  transform-box: view-box;
+  transform-origin: center;
+}
+
+/* A quarter of the circle, chasing its own tail. */
+.spinner--indeterminate .spinner__arc {
+  stroke-dasharray: 14 43;
+  animation: spinner-sweep 0.9s linear infinite;
+}
+
+/* Starts at twelve o'clock and fills clockwise. */
+.spinner--determinate .spinner__arc {
+  transform: rotate(-90deg);
+  transition: stroke-dashoffset 0.2s linear;
+}
+
+@keyframes spinner-sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Slowed rather than stopped: a frozen spinner reads as a hung one. */
+@media (prefers-reduced-motion: reduce) {
+  .spinner--indeterminate .spinner__arc {
+    animation-duration: 2.4s;
+  }
+}
+
+.loading-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Inside a button the spinner takes the button's own colour, which inverts on
+   hover along with the label. */
+.button .spinner {
+  color: inherit;
+}
+
+.button .spinner__track {
+  stroke: currentColor;
+  opacity: 0.25;
+}
+
 /* ---------- connections ---------- */
 
 /* The settings form drops onto its own line under the card it belongs to. */

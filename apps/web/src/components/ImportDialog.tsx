@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 
 import { analyzeCsv, commitCsv, previewCsv } from '../api/imports.js';
 import { formatDate, formatMoney } from '../lib/money.js';
+import { LoadingLine, Spinner } from './Spinner.js';
 
 interface ImportDialogProps {
   accounts: Account[];
@@ -179,7 +180,7 @@ export function ImportDialog({ accounts, initialAccountId, onClose }: ImportDial
               </label>
 
               {analyze.isPending && (
-                <p className="dim">Reading the file and working out the columns…</p>
+                <LoadingLine>Reading the file and working out the columns…</LoadingLine>
               )}
               {analyze.isError && <p className="error">{analyze.error.message}</p>}
 
@@ -303,6 +304,13 @@ export function ImportDialog({ accounts, initialAccountId, onClose }: ImportDial
                     />
                   )}
 
+                  {/* Editing a column re-runs the transform on the server, and
+                      the table below is the old mapping's output until it
+                      lands. */}
+                  {refreshPreview.isPending && (
+                    <LoadingLine>Re-reading the file with this mapping…</LoadingLine>
+                  )}
+
                   <div className="table-wrap">
                     <table className="table">
                       <thead>
@@ -380,6 +388,7 @@ export function ImportDialog({ accounts, initialAccountId, onClose }: ImportDial
                 disabled={!canImport || commit.isPending}
                 onClick={() => commit.mutate()}
               >
+                {commit.isPending && <Spinner label="Importing transactions" />}
                 {commit.isPending ? 'importing' : `import ${preview?.validRows ?? 0} rows`}
               </button>
             </div>

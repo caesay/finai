@@ -17,6 +17,7 @@ import {
   updateAutomation,
 } from '../api/finance.js';
 import { PageHeader } from '../components/Shell.js';
+import { LoadingLine, Spinner } from '../components/Spinner.js';
 import { formatDateTime } from '../lib/money.js';
 
 const FIELDS: RuleField[] = ['description', 'notes', 'amountMinor'];
@@ -75,6 +76,7 @@ export function AutomationsPage() {
       )}
 
       {automations.isError && <p className="error">{automations.error.message}</p>}
+      {automations.isPending && <LoadingLine>Loading automations…</LoadingLine>}
       {items.length === 0 && !automations.isPending && (
         <p className="dim">
           No automations yet. Rules are free to run; AI automations cost a turn.
@@ -127,18 +129,26 @@ export function AutomationsPage() {
               <button
                 type="button"
                 className="button"
+                disabled={toggle.isPending && toggle.variables.id === automation.id}
                 onClick={() => toggle.mutate({ id: automation.id, enabled: !automation.enabled })}
               >
+                {toggle.isPending && toggle.variables.id === automation.id && (
+                  <Spinner label="Saving this automation" />
+                )}
                 {automation.enabled ? 'disable' : 'enable'}
               </button>
               <button
                 type="button"
                 className="button button--ghost"
+                disabled={remove.isPending && remove.variables === automation.id}
                 onClick={() => {
                   if (confirm(`Delete automation "${automation.name}"?`))
                     remove.mutate(automation.id);
                 }}
               >
+                {remove.isPending && remove.variables === automation.id && (
+                  <Spinner label="Deleting this automation" />
+                )}
                 delete
               </button>
             </div>
@@ -342,6 +352,7 @@ function AutomationForm({
 
       <div className="form__actions">
         <button type="submit" className="button" disabled={create.isPending}>
+          {create.isPending && <Spinner label="Saving the automation" />}
           {create.isPending ? 'saving' : 'save'}
         </button>
         {create.isError && <span className="error">{create.error.message}</span>}

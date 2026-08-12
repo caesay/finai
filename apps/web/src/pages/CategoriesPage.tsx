@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { createCategory, deleteCategory, listCategories, updateCategory } from '../api/finance.js';
 import { PageHeader } from '../components/Shell.js';
+import { LoadingLine, Spinner } from '../components/Spinner.js';
 
 /** Categories are entirely manual: add, rename, recolour, delete. */
 export function CategoriesPage() {
@@ -59,6 +60,7 @@ export function CategoriesPage() {
           </label>
 
           <button type="submit" className="button" disabled={create.isPending}>
+            {create.isPending && <Spinner label="Adding the category" />}
             add
           </button>
         </div>
@@ -67,12 +69,14 @@ export function CategoriesPage() {
       </form>
 
       {categories.isError && <p className="error">{categories.error.message}</p>}
+      {categories.isPending && <LoadingLine>Loading categories…</LoadingLine>}
 
       <ul className="card-list">
         {categories.data?.map((category) => (
           <CategoryRow
             key={category.id}
             category={category}
+            isDeleting={remove.isPending && remove.variables === category.id}
             onDelete={() => remove.mutate(category.id)}
             onSaved={invalidate}
           />
@@ -86,10 +90,12 @@ export function CategoriesPage() {
 
 function CategoryRow({
   category,
+  isDeleting,
   onDelete,
   onSaved,
 }: {
   category: Category;
+  isDeleting: boolean;
   onDelete: () => void;
   onSaved: () => Promise<void>;
 }) {
@@ -129,15 +135,18 @@ function CategoryRow({
           disabled={!dirty || save.isPending}
           onClick={() => save.mutate()}
         >
+          {save.isPending && <Spinner label="Saving the category" />}
           save
         </button>
         <button
           type="button"
           className="button button--ghost"
+          disabled={isDeleting}
           onClick={() => {
             if (confirm(`Delete category "${category.name}"?`)) onDelete();
           }}
         >
+          {isDeleting && <Spinner label="Deleting the category" />}
           delete
         </button>
       </div>

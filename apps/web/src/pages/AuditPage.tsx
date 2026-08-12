@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { listAudit } from '../api/finance.js';
 import { PageHeader } from '../components/Shell.js';
+import { LoadingLine, Spinner } from '../components/Spinner.js';
 import { formatDateTime } from '../lib/money.js';
 
 /**
@@ -81,10 +82,18 @@ export function AuditPage() {
               </tr>
             ))}
 
-            {audit.data?.items.length === 0 && (
+            {audit.isPending && (
+              <tr>
+                <td colSpan={4} className="table__empty">
+                  <LoadingLine>Loading audit events…</LoadingLine>
+                </td>
+              </tr>
+            )}
+
+            {!audit.isPending && audit.data?.items.length === 0 && (
               <tr>
                 <td colSpan={4} className="dim table__empty">
-                  {audit.isPending ? 'Loading…' : 'Nothing recorded yet.'}
+                  Nothing recorded yet.
                 </td>
               </tr>
             )}
@@ -96,6 +105,7 @@ export function AuditPage() {
         <span className="label">{audit.data?.total ?? 0} events</span>
 
         <div className="pager">
+          {audit.isFetching && !audit.isPending && <Spinner label="Refreshing audit events" />}
           <span className="label">
             page {page} of {totalPages}
           </span>
