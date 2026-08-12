@@ -3,4 +3,3 @@ export * from './chat.js';
 export * from './connections.js';
 export * from './finance.js';
 export * from './import.js';
-export * from './proposals.js';

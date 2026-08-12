@@ -150,6 +150,12 @@ them rather than authorship. Every write it makes is audited as `assistant`.
 A tool that fails returns `isError` with an explanation rather than throwing, so
 the model can correct itself instead of the turn dying.
 
+The sparkle on a transaction writes a question into the chat box and opens it.
+It does not send: you choose whether it goes to the conversation already open or
+a new one, and you can edit it first. There is no server-side proposal flow any
+more — the assistant proposes a rule by talking, and creates it with
+`create_automation` like any other tool call.
+
 `default_tools_approval_mode = "approve"` on the MCP server is load-bearing.
 Without it every tool call raises a permission request, and a turn started by an
 HTTP request has nobody to answer it — the CLI resolves it as "user cancelled

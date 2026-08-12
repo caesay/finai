@@ -1,14 +1,7 @@
 import type { ChatActivity, ChatMessage } from '@finai/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import {
-  createThread,
-  decideRuleProposal,
-  deleteThread,
-  getThread,
-  requestRuleProposal,
-  streamMessage,
-} from '../api/chat.js';
+import { createThread, deleteThread, getThread, streamMessage } from '../api/chat.js';
 
 const THREAD_STORAGE_KEY = 'finai.chat.threadId';
 
@@ -18,15 +11,10 @@ export interface ChatState {
   activities: ChatActivity[];
   isStreaming: boolean;
   isLoading: boolean;
-  /** True while the assistant is preparing a rule proposal. */
-  isProposing: boolean;
   error: string | null;
   send: (text: string) => void;
   reset: () => void;
   stop: () => void;
-  /** Starts a fresh session holding a proposal for one transaction. */
-  proposeRule: (transactionId: string) => Promise<void>;
-  decideProposal: (messageId: string, decision: 'apply' | 'dismiss') => Promise<void>;
 }
 
 /**
@@ -38,7 +26,6 @@ export function useChat(): ChatState {
   const [activities, setActivities] = useState<ChatActivity[]>([]);
   const [isStreaming, setStreaming] = useState(false);
   const [isLoading, setLoading] = useState(true);
-  const [isProposing, setProposing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const threadIdRef = useRef<string | null>(null);
@@ -162,61 +149,7 @@ export function useChat(): ChatState {
     if (previous) void deleteThread(previous);
   }, []);
 
-  /**
-   * Replaces the session with a fresh one containing the assistant's proposal.
-   * The server builds the thread, so the proposal is stored server-side and the
-   * approve button does not have to be trusted with its contents.
-   */
-  const proposeRule = useCallback(async (transactionId: string) => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-
-    setError(null);
-    setProposing(true);
-    setMessages([]);
-    setActivities([]);
-
-    try {
-      const thread = await requestRuleProposal(transactionId);
-      threadIdRef.current = thread.id;
-      localStorage.setItem(THREAD_STORAGE_KEY, thread.id);
-      setMessages(thread.messages);
-    } catch (proposalError) {
-      setError(
-        proposalError instanceof Error ? proposalError.message : 'Could not reach the assistant',
-      );
-    } finally {
-      setProposing(false);
-    }
-  }, []);
-
-  const decideProposal = useCallback(async (messageId: string, decision: 'apply' | 'dismiss') => {
-    const threadId = threadIdRef.current;
-    if (!threadId) return;
-
-    setError(null);
-
-    try {
-      const thread = await decideRuleProposal(threadId, messageId, decision);
-      setMessages(thread.messages);
-    } catch (decisionError) {
-      setError(decisionError instanceof Error ? decisionError.message : 'Could not apply that');
-    }
-  }, []);
-
-  return {
-    messages,
-    activities,
-    isStreaming,
-    isLoading,
-    isProposing,
-    error,
-    send,
-    reset,
-    stop,
-    proposeRule,
-    decideProposal,
-  };
+  return { messages, activities, isStreaming, isLoading, error, send, reset, stop };
 }
 
 function upsertMessage(messages: ChatMessage[], incoming: ChatMessage): ChatMessage[] {

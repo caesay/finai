@@ -1,28 +1,12 @@
 /** Contracts for the Codex-backed chat interface. */
 
-import type { ProposalStatus, RuleProposal } from './proposals.js';
-
 export type ChatRole = 'user' | 'assistant';
-
-/**
- * Structured content carried alongside a message. The chat renders it as an
- * interactive card — a proposal the user approves or dismisses — rather than
- * asking them to reply in prose.
- */
-export interface RuleProposalAttachment {
-  type: 'rule_proposal';
-  proposal: RuleProposal;
-  status: ProposalStatus;
-}
-
-export type ChatAttachment = RuleProposalAttachment;
 
 export interface ChatMessage {
   id: string;
   role: ChatRole;
   text: string;
   createdAt: string;
-  attachment?: ChatAttachment;
 }
 
 /** Kinds of non-message work the agent reports while producing an answer. */

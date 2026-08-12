@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 
 import { accountRoutes } from './accounts.js';
-import { assistRoutes } from './assist.js';
 import { auditRoutes } from './audit.js';
 import { automationRoutes } from './automations.js';
 import { categoryRoutes } from './categories.js';
@@ -25,6 +24,5 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   await app.register(auditRoutes);
   await app.register(importRoutes);
   await app.register(connectionRoutes);
-  await app.register(assistRoutes);
   await app.register(mcpRoutes);
 }

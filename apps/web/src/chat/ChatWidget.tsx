@@ -1,9 +1,8 @@
-import type { ChatActivity, ChatMessage, RuleProposal } from '@finai/shared';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { ChatActivity, ChatMessage } from '@finai/shared';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 
 import { Spinner } from '../components/Spinner.js';
 import { AssistantIcon } from '../components/icons.js';
-import { formatMoney } from '../lib/money.js';
 import { useChatController } from './ChatContext.js';
 
 /** Floating assistant: a launcher in the corner that opens a chat panel. */
@@ -22,7 +21,7 @@ export function ChatWidget() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isOpen, close]);
 
-  const busy = chat.isStreaming || chat.isProposing;
+  const busy = chat.isStreaming;
 
   return (
     <div className="chat">
@@ -54,13 +53,17 @@ export function ChatWidget() {
             activities={chat.activities}
             isLoading={chat.isLoading}
             isStreaming={chat.isStreaming}
-            isProposing={chat.isProposing}
-            onDecide={chat.decideProposal}
           />
 
           {chat.error && <p className="chat__error">{chat.error}</p>}
 
-          <Composer onSend={chat.send} onStop={chat.stop} isStreaming={chat.isStreaming} />
+          <Composer
+            draft={chat.draft}
+            onDraftChange={chat.setDraft}
+            onSend={chat.send}
+            onStop={chat.stop}
+            isStreaming={chat.isStreaming}
+          />
         </section>
       )}
 
@@ -82,15 +85,11 @@ function Transcript({
   activities,
   isLoading,
   isStreaming,
-  isProposing,
-  onDecide,
 }: {
   messages: ChatMessage[];
   activities: ChatActivity[];
   isLoading: boolean;
   isStreaming: boolean;
-  isProposing: boolean;
-  onDecide: (messageId: string, decision: 'apply' | 'dismiss') => Promise<void>;
 }) {
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -116,22 +115,8 @@ function Transcript({
       {messages.map((message) => (
         <div key={message.id} className="turn">
           <article className={`bubble bubble--${message.role}`}>{message.text}</article>
-
-          {message.attachment?.type === 'rule_proposal' && (
-            <ProposalCard
-              proposal={message.attachment.proposal}
-              status={message.attachment.status}
-              onDecide={(decision) => void onDecide(message.id, decision)}
-            />
-          )}
         </div>
       ))}
-
-      {isProposing && (
-        <p className="chat__hint loading-line">
-          <Spinner /> <span>Reviewing that month of transactions…</span>
-        </p>
-      )}
 
       {activities.length > 0 && (
         <div className="chat__activity">
@@ -156,99 +141,42 @@ function Transcript({
 }
 
 /**
- * The assistant's proposal as an interactive card: what it would do, how many
- * transactions that actually matches, and the two buttons that decide it.
- * Nothing changes until one is pressed.
+ * The draft lives in the chat controller rather than here, so a page can write
+ * a question into it — the sparkle on a transaction does exactly that. It is
+ * left unsent on purpose: sending it is your decision, and so is whether it
+ * goes to this conversation or a new one.
  */
-function ProposalCard({
-  proposal,
-  status,
-  onDecide,
-}: {
-  proposal: RuleProposal;
-  status: 'pending' | 'applied' | 'dismissed';
-  onDecide: (decision: 'apply' | 'dismiss') => void;
-}) {
-  if (proposal.action === 'none') return null;
-
-  return (
-    <div className={`proposal proposal--${status}`}>
-      <div className="proposal__head">
-        <span className="label">
-          {proposal.action === 'update' ? 'update automation' : 'new automation'}
-        </span>
-        <span className={`chip chip--${proposal.kind}`}>{proposal.kind}</span>
-      </div>
-
-      <span className="proposal__name">{proposal.automationName}</span>
-
-      <div className="proposal__rule mono">
-        {proposal.kind === 'ai'
-          ? proposal.aiPrompt
-          : proposal.conditions
-              .map((condition) => `${condition.field} ${condition.operator} "${condition.value}"`)
-              .join(' and ')}
-        <span className="proposal__arrow"> → {proposal.categoryName}</span>
-      </div>
-
-      {proposal.kind === 'rule' && (
-        <span className="dim proposal__matches">
-          Matches {proposal.matches.matched} of {proposal.matches.considered} transactions that
-          month
-          {proposal.matches.wouldRecategorize > 0 &&
-            `, ${proposal.matches.wouldRecategorize} of which already have a category`}
-          .
-        </span>
-      )}
-
-      {proposal.matches.samples.length > 0 && (
-        <ul className="proposal__samples">
-          {proposal.matches.samples.map((sample) => (
-            <li key={`${sample.postedAt}-${sample.description}`} className="mono">
-              {sample.postedAt} {formatMoney(sample.amountMinor, 'GBP')} {sample.description}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {status === 'pending' ? (
-        <>
-          {proposal.question && <p className="proposal__question">{proposal.question}</p>}
-          <div className="proposal__actions">
-            <button type="button" className="button" onClick={() => onDecide('apply')}>
-              yes, set it up
-            </button>
-            <button
-              type="button"
-              className="button button--ghost"
-              onClick={() => onDecide('dismiss')}
-            >
-              no thanks
-            </button>
-          </div>
-        </>
-      ) : (
-        <span className="label">{status}</span>
-      )}
-    </div>
-  );
-}
-
 function Composer({
+  draft,
+  onDraftChange,
   onSend,
   onStop,
   isStreaming,
 }: {
+  draft: string;
+  onDraftChange: (text: string) => void;
   onSend: (text: string) => void;
   onStop: () => void;
   isStreaming: boolean;
 }) {
-  const [draft, setDraft] = useState('');
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Focus the box whenever something else fills it in, with the caret at the
+  // end so it reads as a message waiting to be sent rather than a selection.
+  useEffect(() => {
+    if (draft === '') return;
+
+    const input = inputRef.current;
+    if (!input || document.activeElement === input) return;
+
+    input.focus();
+    input.setSelectionRange(draft.length, draft.length);
+  }, [draft]);
 
   const submit = () => {
     if (!draft.trim() || isStreaming) return;
     onSend(draft);
-    setDraft('');
+    onDraftChange('');
   };
 
   return (
@@ -260,11 +188,12 @@ function Composer({
       }}
     >
       <textarea
+        ref={inputRef}
         className="chat__input"
         rows={2}
         value={draft}
         placeholder="Ask a question…"
-        onChange={(event) => setDraft(event.target.value)}
+        onChange={(event) => onDraftChange(event.target.value)}
         onKeyDown={(event) => {
           // Enter sends; Shift+Enter inserts a newline.
           if (event.key === 'Enter' && !event.shiftKey) {

@@ -1121,68 +1121,9 @@ tr:hover .icon-button,
   gap: 0.5rem;
 }
 
-/* ---------- proposal card ---------- */
-
-.proposal {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  border: 1px solid var(--accent-border);
-  border-radius: var(--radius);
-  background: var(--accent-wash);
-  font-size: 0.8125rem;
-}
-
-.proposal--applied {
-  border-color: var(--success);
-  background: #4ade8010;
-}
-
-.proposal--dismissed {
-  border-color: var(--line-strong);
-  background: transparent;
-  opacity: 0.6;
-}
-
-.proposal__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.proposal__name {
-  font-weight: 600;
-}
-
-.proposal__rule {
-  font-size: 0.75rem;
-  overflow-wrap: anywhere;
-}
-
+/* The only survivor of the proposal card: the arrow between two values. */
 .proposal__arrow {
   color: var(--accent);
-}
-
-.proposal__matches {
-  font-size: 0.75rem;
-}
-
-.proposal__samples {
-  margin: 0;
-  padding-left: 1rem;
-  font-size: 0.6875rem;
-  color: var(--fg-faint);
-}
-
-.proposal__question {
-  margin: 0;
-}
-
-.proposal__actions {
-  display: flex;
-  gap: 0.5rem;
 }
 
 .chat__composer {

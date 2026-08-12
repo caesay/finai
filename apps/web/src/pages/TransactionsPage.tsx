@@ -125,10 +125,7 @@ export function TransactionsPage() {
               onChange={(categoryId) =>
                 recategorize.mutate({ id: context.row.original.id, categoryId })
               }
-              onAsk={() => {
-                chat.open();
-                void chat.proposeRule(context.row.original.id);
-              }}
+              onAsk={() => chat.ask(categorizationPrompt(context.row.original))}
             />
           ),
         }),
@@ -491,6 +488,23 @@ function CategoryCell({
       </button>
     </div>
   );
+}
+
+/**
+ * The message the sparkle drops into the chat box. It is written, not sent —
+ * the assistant has the tools to do all of this itself, and you get to decide
+ * whether it goes to the conversation already open or a fresh one.
+ */
+function categorizationPrompt(transaction: Transaction): string {
+  return [
+    `Look at the transaction "${transaction.description}" on ${transaction.postedAt}`,
+    `(${formatMoney(transaction.amountMinor, transaction.currency)}, ${transaction.accountBank} — ${transaction.accountName})`,
+    'and work out how to categorize transactions like it automatically.',
+    '',
+    'Match the stable part of the description rather than a store number or a',
+    'city that varies. Use an existing category. Show me the rule and how many',
+    'transactions it would affect before creating anything.',
+  ].join('\n');
 }
 
 function queryFromParams(params: URLSearchParams): TransactionQuery {

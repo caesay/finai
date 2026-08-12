@@ -7,6 +7,11 @@ interface ChatController extends ChatState {
   open: () => void;
   close: () => void;
   toggle: () => void;
+  /** Text sitting in the composer, waiting to be sent or edited. */
+  draft: string;
+  setDraft: (text: string) => void;
+  /** Opens the chat with a message written for you but not sent. */
+  ask: (text: string) => void;
 }
 
 const ChatContext = createContext<ChatController | null>(null);
@@ -14,12 +19,17 @@ const ChatContext = createContext<ChatController | null>(null);
 const OPEN_STORAGE_KEY = 'finai.chat.open';
 
 /**
- * Holds the chat session above the widget so pages can drive it — the
- * transaction table opens a fresh session with a rule proposal in it.
+ * Holds the chat session above the widget so pages can drive it.
+ *
+ * The composer's draft lives here rather than in the widget, which is what lets
+ * the transactions table hand the assistant a question without sending it: you
+ * still choose whether it goes to this conversation or a fresh one, and you can
+ * edit it first.
  */
 export function ChatProvider({ children }: { children: ReactNode }) {
   const chat = useChat();
   const [isOpen, setOpen] = useState(() => localStorage.getItem(OPEN_STORAGE_KEY) === 'true');
+  const [draft, setDraft] = useState('');
 
   const controller = useMemo<ChatController>(() => {
     const setOpenState = (value: boolean) => {
@@ -33,8 +43,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       open: () => setOpenState(true),
       close: () => setOpenState(false),
       toggle: () => setOpenState(!isOpen),
+      draft,
+      setDraft,
+      ask: (text: string) => {
+        setDraft(text);
+        setOpenState(true);
+      },
     };
-  }, [chat, isOpen]);
+  }, [chat, isOpen, draft]);
 
   return <ChatContext.Provider value={controller}>{children}</ChatContext.Provider>;
 }
