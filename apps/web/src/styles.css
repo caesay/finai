@@ -811,6 +811,11 @@ tr:hover .icon-button,
   }
 }
 
+/* The question the run dialog is really asking, set above the evidence for it. */
+.run-headline {
+  font-size: 0.9375rem;
+}
+
 /* ---------- spinner ---------- */
 
 .spinner {

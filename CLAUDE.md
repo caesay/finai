@@ -113,6 +113,17 @@ category names and anything unrecognised counts as no match).
 Every change an automation makes is written to `audit_events`. User edits are
 recorded too, but the Audit page filters them out by default.
 
+**Running one over transactions already here** is a separate path
+(`automations/backfill.ts`, "run on existing" on the Automations page). Only the
+chosen automation runs — first-match-wins exists to stop every AI automation
+being billed for one arriving transaction, and has nothing to say about a
+deliberate backfill. A dry run is the same code with the writes left out, so the
+figures in the confirmation dialog come from the run that is about to happen.
+Candidates are collected before anything is written, because setting a category
+changes whether a row still matches the filter it was selected under. An AI
+backfill is capped at 200 transactions and cannot be previewed — counting its
+matches costs the same turns as running it.
+
 ## Codex
 
 The Codex SDK drives the `codex` CLI, which the Docker image installs globally.

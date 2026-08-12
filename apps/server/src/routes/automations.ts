@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
+import { backfillAutomation } from '../automations/backfill.js';
 import { badRequest, notFound } from '../lib/errors.js';
 
 const conditionSchema = z.object({
@@ -32,6 +33,16 @@ const automationInputSchema = z.object({
 });
 
 const idParams = z.object({ id: z.string().uuid() });
+
+const backfillSchema = z.object({
+  // Defaults are the cautious ones: change nothing, and leave anything already
+  // categorized alone.
+  dryRun: z.boolean().default(true),
+  onlyUncategorized: z.boolean().default(true),
+  accountId: z.string().uuid().optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+});
 
 export async function automationRoutes(app: FastifyInstance): Promise<void> {
   app.get('/automations', async () => app.repositories.automations.list());
@@ -97,6 +108,39 @@ export async function automationRoutes(app: FastifyInstance): Promise<void> {
     });
 
     return reply.status(204).send();
+  });
+
+  /**
+   * Runs one automation over transactions already stored.
+   *
+   * `dryRun` is the same code path with the writes left out, so the numbers the
+   * confirmation dialog shows are produced by the run that is about to happen
+   * rather than by a separate estimate of it.
+   */
+  app.post('/automations/:id/backfill', async (request, reply) => {
+    const { id } = idParams.parse(request.params);
+    const input = backfillSchema.parse(request.body ?? {});
+
+    const automation = await app.repositories.automations.get(id);
+    if (!automation) return notFound(reply, 'Automation not found');
+
+    if (automation.kind === 'rule' && (automation.rule?.conditions.length ?? 0) === 0) {
+      return badRequest(reply, 'That automation has no conditions to match on');
+    }
+
+    return backfillAutomation(
+      {
+        automations: app.repositories.automations,
+        transactions: app.repositories.transactions,
+        categories: app.repositories.categories,
+        audit: app.repositories.audit,
+        codex: app.codex,
+        config: app.config,
+        log: { warn: (context, message) => app.log.warn(context, message) },
+      },
+      automation,
+      input,
+    );
   });
 }
 

@@ -94,7 +94,7 @@ function unchanged(transaction: Transaction, reason: string): AutomationRunResul
 }
 
 /** Returns the category id an automation wants to apply, or null for no match. */
-async function evaluate(
+export async function evaluate(
   deps: AutomationEngineDeps,
   automation: Automation,
   transaction: Transaction,

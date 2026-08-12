@@ -206,6 +206,63 @@ export interface AutomationInput {
   action?: AutomationAction;
 }
 
+/* ---------- running an automation over transactions already here ---------- */
+
+/**
+ * Automations normally only ever see a transaction as it arrives. A backfill
+ * runs one automation over transactions already stored — on its own, not as
+ * part of the first-match-wins chain, because the point is to apply this rule
+ * rather than to re-litigate every rule.
+ */
+export interface AutomationBackfillInput {
+  /** Nothing is written unless this is false. */
+  dryRun: boolean;
+  /**
+   * Leave transactions that already have a category alone, which is what the
+   * import-time chain does. Turning it off lets a rule overwrite a category
+   * that is already set.
+   */
+  onlyUncategorized: boolean;
+  accountId?: string;
+  /** Inclusive ISO date bounds. */
+  from?: string;
+  to?: string;
+}
+
+export interface AutomationBackfillChange {
+  transactionId: string;
+  postedAt: string;
+  description: string;
+  amountMinor: number;
+  currency: string;
+  fromCategoryName: string | null;
+  toCategoryName: string;
+}
+
+export interface AutomationBackfillResult {
+  automationId: string;
+  automationName: string;
+  kind: AutomationKind;
+  dryRun: boolean;
+  /** Transactions the run looked at. */
+  considered: number;
+  /** Of those, how many the automation matched. */
+  matched: number;
+  /** Matched transactions whose category actually differs from what it was. */
+  changed: number;
+  /** Of those, how many already had some other category. */
+  recategorized: number;
+  /** Transactions left out because the run hit its ceiling. */
+  skipped: number;
+  /**
+   * True when the figures could not be simulated. An AI automation decides per
+   * transaction, so counting its matches costs the same turns as running it.
+   */
+  estimateOnly: boolean;
+  /** The first handful of changes, for showing what a run would do. */
+  changes: AutomationBackfillChange[];
+}
+
 /** Result of applying automations to one transaction. */
 export interface AutomationRunResult {
   transactionId: string;

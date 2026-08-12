@@ -4,6 +4,8 @@ import type {
   AuditEvent,
   AuditQuery,
   Automation,
+  AutomationBackfillInput,
+  AutomationBackfillResult,
   AutomationInput,
   Category,
   CategoryInput,
@@ -80,6 +82,15 @@ export const updateAutomation = (
   input: Partial<AutomationInput>,
 ): Promise<Automation> =>
   apiFetch<Automation>(`/automations/${id}`, { method: 'PATCH', body: JSON.stringify(input) });
+
+export const backfillAutomation = (
+  id: string,
+  input: AutomationBackfillInput,
+): Promise<AutomationBackfillResult> =>
+  apiFetch<AutomationBackfillResult>(`/automations/${id}/backfill`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
 
 export const deleteAutomation = (id: string): Promise<void> =>
   apiFetch<void>(`/automations/${id}`, { method: 'DELETE' });

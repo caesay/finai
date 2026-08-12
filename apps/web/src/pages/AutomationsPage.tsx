@@ -16,6 +16,7 @@ import {
   listCategories,
   updateAutomation,
 } from '../api/finance.js';
+import { AutomationRunDialog } from '../components/AutomationRunDialog.js';
 import { PageHeader } from '../components/Shell.js';
 import { LoadingLine, Spinner } from '../components/Spinner.js';
 import { formatDateTime } from '../lib/money.js';
@@ -31,6 +32,7 @@ const OPERATORS: RuleOperator[] = ['contains', 'equals', 'regex', 'gt', 'lt'];
 export function AutomationsPage() {
   const queryClient = useQueryClient();
   const [isAdding, setAdding] = useState(false);
+  const [running, setRunning] = useState<Automation | null>(null);
 
   const automations = useQuery({ queryKey: ['automations'], queryFn: listAutomations });
   const categories = useQuery({ queryKey: ['categories'], queryFn: listCategories });
@@ -102,6 +104,11 @@ export function AutomationsPage() {
             </div>
 
             <div className="card__actions">
+              {/* Automations normally only see transactions as they arrive;
+                  this is the way to apply one to what is already here. */}
+              <button type="button" className="button" onClick={() => setRunning(automation)}>
+                run on existing
+              </button>
               <button
                 type="button"
                 className="button button--ghost"
@@ -155,6 +162,8 @@ export function AutomationsPage() {
           </li>
         ))}
       </ul>
+
+      {running && <AutomationRunDialog automation={running} onClose={() => setRunning(null)} />}
     </>
   );
 }
