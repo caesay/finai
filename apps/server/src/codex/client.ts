@@ -27,7 +27,18 @@ export function createCodex(config: Config): Codex {
     ...(config.codexPath ? { codexPathOverride: config.codexPath } : {}),
     config: {
       mcp_servers: {
-        finai: { url: `http://127.0.0.1:${String(config.port)}/api/mcp` },
+        finai: {
+          url: `http://127.0.0.1:${String(config.port)}/api/mcp`,
+          // Without this every tool call raises a permission request, and a
+          // turn started by a web request has nobody to answer it: the CLI
+          // resolves it as "user cancelled MCP tool call" and the agent
+          // concludes it has no access. The tools themselves are the boundary
+          // — that is what makes approving them up front safe.
+          default_tools_approval_mode: 'approve',
+          // An AI automation run over existing transactions spends a turn per
+          // transaction, so the tool that starts it is slow by design.
+          tool_timeout_sec: 600,
+        },
       },
       features: {
         // Every one of these is a way out of the app and into the machine.

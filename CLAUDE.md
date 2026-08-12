@@ -150,6 +150,13 @@ them rather than authorship. Every write it makes is audited as `assistant`.
 A tool that fails returns `isError` with an explanation rather than throwing, so
 the model can correct itself instead of the turn dying.
 
+`default_tools_approval_mode = "approve"` on the MCP server is load-bearing.
+Without it every tool call raises a permission request, and a turn started by an
+HTTP request has nobody to answer it — the CLI resolves it as "user cancelled
+MCP tool call" and the agent reports, convincingly and wrongly, that it has no
+access. Approving up front is safe precisely because the tool list is the
+boundary.
+
 ## Icons
 
 Icons come from the **Icons8 MCP server**, style **`forma-light-sharp`**
