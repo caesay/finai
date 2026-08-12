@@ -57,6 +57,35 @@ truth:
 A separately billed fee is folded into the transaction amount, because that is
 what actually left the account and it is what makes the balance reconcile.
 
+## Connections
+
+A connection is an account aggregator holding credentials for one or more
+remote accounts. LunchFlow is the only one today; only
+`apps/server/src/connections/providers/` knows that, because everything above it
+speaks the three-call `ConnectionProvider` interface — list accounts, list
+transactions, read a balance — so a second aggregator is a new file there and an
+entry in the registry.
+
+Remote accounts are not accounts. Each one is reviewed and either linked to an
+existing account, used to create a new one, or ignored; the assistant proposes
+that mapping and defaults to creating rather than linking when it is unsure,
+since linking the wrong account mixes two histories together. Nothing is
+imported until the review is confirmed.
+
+- A sync only asks for transactions dated on or after the newest one the
+  account already holds, and enforces that on the way back in case the provider
+  ignores the filter. An account with nothing in it takes full history instead.
+- The dedupe key is `<provider>:<remote id>`, so an overlapping window costs
+  nothing. Pending rows have no id, so they are never imported.
+- `anchorBalance` re-derives the account's `openingBalanceMinor` from the
+  provider's balance after each sync, which is what makes an account created
+  from a partial feed agree with the bank. It defaults on for accounts a
+  connection creates and off for accounts that already had history.
+- Open banking consent lasts 90 days, so `disconnected` is a resting state, not
+  a failure: it is recorded against the link and shown under the account on the
+  Accounts page, because otherwise a dead feed looks like a quiet month.
+- `CONNECTION_SYNC_INTERVAL_MINUTES` drives the background timer; 0 disables it.
+
 ## Database
 
 SQLite through Drizzle, opened in `apps/server/src/db/client.ts`. Migrations are

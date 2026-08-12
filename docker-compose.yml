@@ -13,6 +13,9 @@ services:
       LOG_LEVEL: info
       DATA_DIR: /data
       CODEX_HOME: /data/codex
+      # How often connections pull in new transactions. 0 leaves it to the
+      # "sync now" button on the Connections page.
+      CONNECTION_SYNC_INTERVAL_MINUTES: '360'
     volumes:
       # Application data (database, uploads) and Codex credentials.
       # Codex auth lives in ./data/codex so `codex login` only has to run once:
