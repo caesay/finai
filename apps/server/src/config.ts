@@ -25,8 +25,14 @@ const envSchema = z.object({
   CODEX_PATH: z.string().optional(),
   /** Model the agent runs on. Unset means the Codex CLI default. */
   CODEX_MODEL: z.string().optional(),
-  /** Root for persisted application state (chat transcripts, later the database). */
+  /** Root for persisted application state (chat transcripts and the database). */
   DATA_DIR: z.string().default('./data'),
+  /**
+   * Where the database lives. Empty means a SQLite file inside DATA_DIR;
+   * ':memory:' gives a throwaway database, which is what tests use. A Postgres
+   * URL is the intended growth path.
+   */
+  DATABASE_URL: z.string().default(''),
 });
 
 export type Config = {
@@ -40,6 +46,7 @@ export type Config = {
   codexPath: string | undefined;
   codexModel: string | undefined;
   dataDir: string;
+  databaseUrl: string;
   version: string;
 };
 
@@ -66,6 +73,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     codexPath: value.CODEX_PATH,
     codexModel: value.CODEX_MODEL,
     dataDir: resolve(value.DATA_DIR),
+    databaseUrl: value.DATABASE_URL,
     version: env.npm_package_version ?? '0.0.1',
   };
 }

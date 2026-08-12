@@ -8,6 +8,8 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { ChatStore } from './chat/store.js';
 import { createCodex } from './codex/client.js';
 import type { Config } from './config.js';
+import { openDatabase, openMemoryDatabase } from './db/client.js';
+import { createRepositories, type Repositories } from './db/repositories/index.js';
 import { registerRoutes } from './routes/index.js';
 
 export async function buildApp(config: Config): Promise<FastifyInstance> {
@@ -43,9 +45,20 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   const chatStore = new ChatStore(config.dataDir);
   await chatStore.init();
 
+  // Tests run against a throwaway in-memory database.
+  const database =
+    config.databaseUrl === ':memory:' ? openMemoryDatabase() : openDatabase(config.dataDir);
+  const repositories = createRepositories(database.db);
+  const seeded = await repositories.categories.seedIfEmpty();
+  if (seeded > 0) app.log.info({ seeded }, 'seeded default categories');
+
   app.decorate('config', config);
   app.decorate('codex', createCodex(config));
   app.decorate('chatStore', chatStore);
+  app.decorate('repositories', repositories);
+  app.addHook('onClose', () => {
+    database.close();
+  });
 
   await app.register(registerRoutes, { prefix: '/api' });
 
@@ -88,5 +101,6 @@ declare module 'fastify' {
     config: Config;
     codex: Codex;
     chatStore: ChatStore;
+    repositories: Repositories;
   }
 }

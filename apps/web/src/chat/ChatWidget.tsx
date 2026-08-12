@@ -1,6 +1,7 @@
 import type { ChatActivity, ChatMessage } from '@finai/shared';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
+import { AssistantIcon } from '../components/icons.js';
 import { useChat } from './useChat.js';
 
 const OPEN_STORAGE_KEY = 'finai.chat.open';
@@ -70,7 +71,7 @@ export function ChatWidget() {
         aria-expanded={isOpen}
         aria-label={isOpen ? 'Hide assistant' : 'Ask the assistant'}
       >
-        {isOpen ? '×' : 'ask'}
+        {isOpen ? '×' : <AssistantIcon size={22} />}
       </button>
     </div>
   );
