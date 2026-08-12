@@ -11,7 +11,7 @@ export function getThread(id: string): Promise<ChatThread> {
 }
 
 export async function deleteThread(id: string): Promise<void> {
-  await fetch(`/api/chat/threads/${id}`, { method: 'DELETE' });
+  await apiFetch<void>(`/chat/threads/${id}`, { method: 'DELETE' });
 }
 
 /**

@@ -21,6 +21,25 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
     trustProxy: true,
   });
 
+  // Fastify rejects `Content-Type: application/json` with an empty body, which
+  // clients send routinely for POSTs that take no payload.
+  app.addContentTypeParser<string>(
+    'application/json',
+    { parseAs: 'string' },
+    (_request, body, done) => {
+      if (body.trim() === '') {
+        done(null, undefined);
+        return;
+      }
+
+      try {
+        done(null, JSON.parse(body));
+      } catch (error) {
+        done(error as Error, undefined);
+      }
+    },
+  );
+
   const chatStore = new ChatStore(config.dataDir);
   await chatStore.init();
 
