@@ -1,4 +1,4 @@
-import type { Transaction, TransactionQuery, TransactionSortField } from '@finai/shared';
+import type { Category, Transaction, TransactionQuery, TransactionSortField } from '@finai/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper, tableFeatures, useTable } from '@tanstack/react-table';
 import { useEffect, useMemo, useState } from 'react';
@@ -10,8 +10,10 @@ import {
   listTransactions,
   updateTransaction,
 } from '../api/finance.js';
+import { useChatController } from '../chat/ChatContext.js';
 import { ImportDialog } from '../components/ImportDialog.js';
 import { PageHeader } from '../components/Shell.js';
+import { CheckIcon, CloseIcon, EditIcon, SparkleIcon } from '../components/icons.js';
 import { formatDate, formatMoney } from '../lib/money.js';
 
 const features = tableFeatures({});
@@ -61,6 +63,7 @@ export function TransactionsPage() {
     queryFn: () => listTransactions(query),
   });
 
+  const chat = useChatController();
   const queryClient = useQueryClient();
   const recategorize = useMutation({
     mutationFn: ({ id, categoryId }: { id: string; categoryId: string | null }) =>
@@ -111,33 +114,19 @@ export function TransactionsPage() {
         helper.display({
           id: 'category',
           header: 'Category',
-          cell: (context) => {
-            const transaction = context.row.original;
-            return (
-              <select
-                className="cell-select"
-                value={transaction.categoryId ?? ''}
-                style={
-                  transaction.categoryColor
-                    ? { borderColor: transaction.categoryColor, color: transaction.categoryColor }
-                    : undefined
-                }
-                onChange={(event) => {
-                  recategorize.mutate({
-                    id: transaction.id,
-                    categoryId: event.target.value === '' ? null : event.target.value,
-                  });
-                }}
-              >
-                <option value="">uncategorized</option>
-                {(categories.data ?? []).map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            );
-          },
+          cell: (context) => (
+            <CategoryCell
+              transaction={context.row.original}
+              categories={categories.data ?? []}
+              onChange={(categoryId) =>
+                recategorize.mutate({ id: context.row.original.id, categoryId })
+              }
+              onAsk={() => {
+                chat.open();
+                void chat.proposeRule(context.row.original.id);
+              }}
+            />
+          ),
         }),
         helper.accessor('amountMinor', {
           header: 'Amount',
@@ -150,7 +139,7 @@ export function TransactionsPage() {
           ),
         }),
       ]),
-    [categories.data, recategorize],
+    [categories.data, recategorize, chat],
   );
 
   const table = useTable({
@@ -376,6 +365,104 @@ export function TransactionsPage() {
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * Category shows as plain text until you act on it: the pen swaps in a picker
+ * with confirm and cancel, the sparkle hands the transaction to the assistant
+ * to propose a rule for everything like it.
+ */
+function CategoryCell({
+  transaction,
+  categories,
+  onChange,
+  onAsk,
+}: {
+  transaction: Transaction;
+  categories: Category[];
+  onChange: (categoryId: string | null) => void;
+  onAsk: () => void;
+}) {
+  const [isEditing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(transaction.categoryId ?? '');
+
+  if (isEditing) {
+    return (
+      <div className="category-cell">
+        <select
+          className="cell-select"
+          value={draft}
+          autoFocus
+          onChange={(event) => setDraft(event.target.value)}
+        >
+          <option value="">uncategorized</option>
+          {categories.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
+          ))}
+        </select>
+
+        <button
+          type="button"
+          className="icon-button icon-button--confirm"
+          aria-label="Save category"
+          onClick={() => {
+            if (draft !== (transaction.categoryId ?? '')) onChange(draft === '' ? null : draft);
+            setEditing(false);
+          }}
+        >
+          <CheckIcon size={14} />
+        </button>
+
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Cancel"
+          onClick={() => {
+            setDraft(transaction.categoryId ?? '');
+            setEditing(false);
+          }}
+        >
+          <CloseIcon size={14} />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="category-cell">
+      <span
+        className={transaction.categoryName ? 'category-chip' : 'dim'}
+        style={
+          transaction.categoryColor
+            ? { borderColor: transaction.categoryColor, color: transaction.categoryColor }
+            : undefined
+        }
+      >
+        {transaction.categoryName ?? 'uncategorized'}
+      </span>
+
+      <button
+        type="button"
+        className="icon-button"
+        aria-label="Change category"
+        onClick={() => setEditing(true)}
+      >
+        <EditIcon size={14} />
+      </button>
+
+      <button
+        type="button"
+        className="icon-button icon-button--accent"
+        aria-label="Ask the assistant for a rule"
+        title="Ask the assistant to suggest a rule for transactions like this"
+        onClick={onAsk}
+      >
+        <SparkleIcon size={14} />
+      </button>
+    </div>
   );
 }
 

@@ -1,30 +1,27 @@
-import type { ChatActivity, ChatMessage } from '@finai/shared';
+import type { ChatActivity, ChatMessage, RuleProposal } from '@finai/shared';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { AssistantIcon } from '../components/icons.js';
-import { useChat } from './useChat.js';
-
-const OPEN_STORAGE_KEY = 'finai.chat.open';
+import { formatMoney } from '../lib/money.js';
+import { useChatController } from './ChatContext.js';
 
 /** Floating assistant: a launcher in the corner that opens a chat panel. */
 export function ChatWidget() {
-  const [isOpen, setOpen] = useState(() => localStorage.getItem(OPEN_STORAGE_KEY) === 'true');
-  const chat = useChat();
-
-  useEffect(() => {
-    localStorage.setItem(OPEN_STORAGE_KEY, String(isOpen));
-  }, [isOpen]);
+  const chat = useChatController();
+  const { isOpen, close } = chat;
 
   useEffect(() => {
     if (!isOpen) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key === 'Escape') close();
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isOpen]);
+  }, [isOpen, close]);
+
+  const busy = chat.isStreaming || chat.isProposing;
 
   return (
     <div className="chat">
@@ -32,7 +29,7 @@ export function ChatWidget() {
         <section className="chat__panel" aria-label="finai assistant">
           <header className="chat__header">
             <span className="status">
-              <span className={`status__dot ${chat.isStreaming ? 'status__dot--pending' : ''}`} />
+              <span className={`status__dot ${busy ? 'status__dot--pending' : ''}`} />
               <span className="label">assistant</span>
             </span>
 
@@ -43,7 +40,7 @@ export function ChatWidget() {
               <button
                 type="button"
                 className="button button--ghost"
-                onClick={() => setOpen(false)}
+                onClick={close}
                 aria-label="Close chat"
               >
                 close
@@ -56,6 +53,8 @@ export function ChatWidget() {
             activities={chat.activities}
             isLoading={chat.isLoading}
             isStreaming={chat.isStreaming}
+            isProposing={chat.isProposing}
+            onDecide={chat.decideProposal}
           />
 
           {chat.error && <p className="chat__error">{chat.error}</p>}
@@ -67,7 +66,7 @@ export function ChatWidget() {
       <button
         type="button"
         className="chat__launcher"
-        onClick={() => setOpen((open) => !open)}
+        onClick={chat.toggle}
         aria-expanded={isOpen}
         aria-label={isOpen ? 'Hide assistant' : 'Ask the assistant'}
       >
@@ -82,11 +81,15 @@ function Transcript({
   activities,
   isLoading,
   isStreaming,
+  isProposing,
+  onDecide,
 }: {
   messages: ChatMessage[];
   activities: ChatActivity[];
   isLoading: boolean;
   isStreaming: boolean;
+  isProposing: boolean;
+  onDecide: (messageId: string, decision: 'apply' | 'dismiss') => Promise<void>;
 }) {
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -106,10 +109,20 @@ function Transcript({
       )}
 
       {messages.map((message) => (
-        <article key={message.id} className={`bubble bubble--${message.role}`}>
-          {message.text}
-        </article>
+        <div key={message.id} className="turn">
+          <article className={`bubble bubble--${message.role}`}>{message.text}</article>
+
+          {message.attachment?.type === 'rule_proposal' && (
+            <ProposalCard
+              proposal={message.attachment.proposal}
+              status={message.attachment.status}
+              onDecide={(decision) => void onDecide(message.id, decision)}
+            />
+          )}
+        </div>
       ))}
+
+      {isProposing && <p className="chat__hint">Reviewing that month of transactions…</p>}
 
       {activities.length > 0 && (
         <div className="chat__activity">
@@ -125,6 +138,85 @@ function Transcript({
       {isStreaming && activities.length === 0 && <p className="chat__hint">thinking…</p>}
 
       <div ref={endRef} />
+    </div>
+  );
+}
+
+/**
+ * The assistant's proposal as an interactive card: what it would do, how many
+ * transactions that actually matches, and the two buttons that decide it.
+ * Nothing changes until one is pressed.
+ */
+function ProposalCard({
+  proposal,
+  status,
+  onDecide,
+}: {
+  proposal: RuleProposal;
+  status: 'pending' | 'applied' | 'dismissed';
+  onDecide: (decision: 'apply' | 'dismiss') => void;
+}) {
+  if (proposal.action === 'none') return null;
+
+  return (
+    <div className={`proposal proposal--${status}`}>
+      <div className="proposal__head">
+        <span className="label">
+          {proposal.action === 'update' ? 'update automation' : 'new automation'}
+        </span>
+        <span className={`chip chip--${proposal.kind}`}>{proposal.kind}</span>
+      </div>
+
+      <span className="proposal__name">{proposal.automationName}</span>
+
+      <div className="proposal__rule mono">
+        {proposal.kind === 'ai'
+          ? proposal.aiPrompt
+          : proposal.conditions
+              .map((condition) => `${condition.field} ${condition.operator} "${condition.value}"`)
+              .join(' and ')}
+        <span className="proposal__arrow"> → {proposal.categoryName}</span>
+      </div>
+
+      {proposal.kind === 'rule' && (
+        <span className="dim proposal__matches">
+          Matches {proposal.matches.matched} of {proposal.matches.considered} transactions that
+          month
+          {proposal.matches.wouldRecategorize > 0 &&
+            `, ${proposal.matches.wouldRecategorize} of which already have a category`}
+          .
+        </span>
+      )}
+
+      {proposal.matches.samples.length > 0 && (
+        <ul className="proposal__samples">
+          {proposal.matches.samples.map((sample) => (
+            <li key={`${sample.postedAt}-${sample.description}`} className="mono">
+              {sample.postedAt} {formatMoney(sample.amountMinor, 'GBP')} {sample.description}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {status === 'pending' ? (
+        <>
+          {proposal.question && <p className="proposal__question">{proposal.question}</p>}
+          <div className="proposal__actions">
+            <button type="button" className="button" onClick={() => onDecide('apply')}>
+              yes, set it up
+            </button>
+            <button
+              type="button"
+              className="button button--ghost"
+              onClick={() => onDecide('dismiss')}
+            >
+              no thanks
+            </button>
+          </div>
+        </>
+      ) : (
+        <span className="label">{status}</span>
+      )}
     </div>
   );
 }

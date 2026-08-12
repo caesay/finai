@@ -74,6 +74,26 @@ export class ChatStore {
     });
   }
 
+  /** Applies a change to one message, e.g. marking a proposal as applied. */
+  async updateMessage(
+    id: string,
+    messageId: string,
+    mutate: (message: ChatMessage) => void,
+  ): Promise<ChatMessage | null> {
+    let updated: ChatMessage | null = null;
+
+    await this.#update(id, (thread) => {
+      const message = thread.messages.find((candidate) => candidate.id === messageId);
+      if (!message) return;
+
+      mutate(message);
+      thread.updatedAt = new Date().toISOString();
+      updated = message;
+    });
+
+    return updated;
+  }
+
   async setCodexThreadId(id: string, codexThreadId: string): Promise<void> {
     await this.#update(id, (thread) => {
       thread.codexThreadId = codexThreadId;

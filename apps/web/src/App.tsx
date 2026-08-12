@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom';
 
+import { ChatProvider } from './chat/ChatContext.js';
 import { ChatWidget } from './chat/ChatWidget.js';
 import { Shell } from './components/Shell.js';
 import { AccountsPage } from './pages/AccountsPage.js';
@@ -11,17 +12,19 @@ import { TransactionsPage } from './pages/TransactionsPage.js';
 
 export function App() {
   return (
-    <Shell>
-      <Routes>
-        <Route path="/" element={<OverviewPage />} />
-        <Route path="/accounts" element={<AccountsPage />} />
-        <Route path="/transactions" element={<TransactionsPage />} />
-        <Route path="/categories" element={<CategoriesPage />} />
-        <Route path="/automations" element={<AutomationsPage />} />
-        <Route path="/audit" element={<AuditPage />} />
-        <Route path="*" element={<OverviewPage />} />
-      </Routes>
-      <ChatWidget />
-    </Shell>
+    <ChatProvider>
+      <Shell>
+        <Routes>
+          <Route path="/" element={<OverviewPage />} />
+          <Route path="/accounts" element={<AccountsPage />} />
+          <Route path="/transactions" element={<TransactionsPage />} />
+          <Route path="/categories" element={<CategoriesPage />} />
+          <Route path="/automations" element={<AutomationsPage />} />
+          <Route path="/audit" element={<AuditPage />} />
+          <Route path="*" element={<OverviewPage />} />
+        </Routes>
+        <ChatWidget />
+      </Shell>
+    </ChatProvider>
   );
 }

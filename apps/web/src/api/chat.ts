@@ -14,6 +14,23 @@ export async function deleteThread(id: string): Promise<void> {
   await apiFetch<void>(`/chat/threads/${id}`, { method: 'DELETE' });
 }
 
+/** Starts a thread containing the assistant's categorization proposal. */
+export const requestRuleProposal = (transactionId: string): Promise<ChatThread> =>
+  apiFetch<ChatThread>('/assist/rule-proposal', {
+    method: 'POST',
+    body: JSON.stringify({ transactionId }),
+  });
+
+export const decideRuleProposal = (
+  threadId: string,
+  messageId: string,
+  decision: 'apply' | 'dismiss',
+): Promise<ChatThread> =>
+  apiFetch<ChatThread>('/assist/rule-proposal/decision', {
+    method: 'POST',
+    body: JSON.stringify({ threadId, messageId, decision }),
+  });
+
 /**
  * Sends a message and yields the agent's stream. The endpoint speaks
  * server-sent events over a POST, so the body is parsed by hand rather than
