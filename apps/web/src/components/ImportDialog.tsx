@@ -31,7 +31,13 @@ export function ImportDialog({ accounts, initialAccountId, onClose }: ImportDial
   const [reason, setReason] = useState('');
   const [confidence, setConfidence] = useState<'high' | 'medium' | 'low'>('low');
   const [preview, setPreview] = useState<CsvPreview | null>(null);
-  const [accountId, setAccountId] = useState(initialAccountId ?? accounts[0]?.id ?? '');
+  // Only preselect when the choice is unambiguous: the page was already
+  // filtered to an account, or there is only one. Otherwise the destination has
+  // to be picked deliberately — importing a statement into the wrong account is
+  // tedious to undo.
+  const [accountId, setAccountId] = useState(
+    initialAccountId ?? (accounts.length === 1 ? (accounts[0]?.id ?? '') : ''),
+  );
   const [isDragging, setDragging] = useState(false);
 
   const analyze = useMutation({
@@ -116,6 +122,18 @@ export function ImportDialog({ accounts, initialAccountId, onClose }: ImportDial
             </div>
           ) : (
             <>
+              <label className="field">
+                <span className="label">import into</span>
+                <select value={accountId} onChange={(event) => setAccountId(event.target.value)}>
+                  <option value="">choose an account…</option>
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.bank} — {account.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
               <label
                 className={`dropzone${isDragging ? ' dropzone--active' : ''}`}
                 onDragOver={(event) => {
@@ -253,19 +271,6 @@ export function ImportDialog({ accounts, initialAccountId, onClose }: ImportDial
                       onChange={(externalIdColumn) => changeMapping({ externalIdColumn })}
                       allowNone
                     />
-                    <label className="field">
-                      <span className="label">import into</span>
-                      <select
-                        value={accountId}
-                        onChange={(event) => setAccountId(event.target.value)}
-                      >
-                        {accounts.map((account) => (
-                          <option key={account.id} value={account.id}>
-                            {account.bank} — {account.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
                   </div>
 
                   <div className="table-wrap">
@@ -318,7 +323,11 @@ export function ImportDialog({ accounts, initialAccountId, onClose }: ImportDial
         {!commit.isSuccess && (
           <footer className="modal__foot">
             <span className="label">
-              {preview ? `${preview.validRows} of ${totalRows} rows ready` : ''}
+              {!accountId
+                ? 'choose an account first'
+                : preview
+                  ? `${preview.validRows} of ${totalRows} rows ready`
+                  : ''}
             </span>
 
             <div className="modal__actions">
