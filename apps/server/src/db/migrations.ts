@@ -89,4 +89,46 @@ export const MIGRATIONS: Migration[] = [
       `ALTER TABLE transactions ADD COLUMN kind TEXT NOT NULL DEFAULT 'normal'`,
     ],
   },
+  {
+    name: '0003_connections',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS connections (
+        id TEXT PRIMARY KEY NOT NULL,
+        provider TEXT NOT NULL,
+        name TEXT NOT NULL,
+        api_key TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'active',
+        settings_json TEXT NOT NULL DEFAULT '{}',
+        last_synced_at TEXT,
+        last_error TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS connection_accounts (
+        id TEXT PRIMARY KEY NOT NULL,
+        connection_id TEXT NOT NULL REFERENCES connections(id) ON DELETE CASCADE,
+        remote_id TEXT NOT NULL,
+        remote_name TEXT NOT NULL,
+        institution_name TEXT NOT NULL,
+        institution_logo TEXT,
+        remote_provider TEXT,
+        currency TEXT,
+        status TEXT NOT NULL DEFAULT 'unknown',
+        account_id TEXT REFERENCES accounts(id) ON DELETE SET NULL,
+        anchor_balance INTEGER NOT NULL DEFAULT 0,
+        last_synced_at TEXT,
+        last_error TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )`,
+      // One row per remote account per connection: a re-listing updates the row
+      // it already has rather than stacking duplicates.
+      `CREATE UNIQUE INDEX IF NOT EXISTS connection_accounts_remote_idx
+        ON connection_accounts(connection_id, remote_id)`,
+      `CREATE INDEX IF NOT EXISTS connection_accounts_connection_idx
+        ON connection_accounts(connection_id)`,
+      `CREATE INDEX IF NOT EXISTS connection_accounts_account_idx
+        ON connection_accounts(account_id)`,
+    ],
+  },
 ];

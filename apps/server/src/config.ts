@@ -3,6 +3,8 @@ import { join, resolve } from 'node:path';
 
 import { z } from 'zod';
 
+import { LUNCHFLOW_API_URL } from './connections/providers/lunchflow.js';
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   /** Port the HTTP server listens on. */
@@ -33,6 +35,13 @@ const envSchema = z.object({
    * URL is the intended growth path.
    */
   DATABASE_URL: z.string().default(''),
+  /** Base URL of the LunchFlow REST API. Overridable so tests can point at a stub. */
+  LUNCHFLOW_API_URL: z.string().default(LUNCHFLOW_API_URL),
+  /**
+   * How often connections import new transactions on their own. 0 disables the
+   * timer, leaving sync to the button on the Connections page.
+   */
+  CONNECTION_SYNC_INTERVAL_MINUTES: z.coerce.number().int().min(0).default(360),
 });
 
 export type Config = {
@@ -47,6 +56,8 @@ export type Config = {
   codexModel: string | undefined;
   dataDir: string;
   databaseUrl: string;
+  lunchflowApiUrl: string;
+  connectionSyncIntervalMinutes: number;
   version: string;
 };
 
@@ -74,6 +85,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     codexModel: value.CODEX_MODEL,
     dataDir: resolve(value.DATA_DIR),
     databaseUrl: value.DATABASE_URL,
+    lunchflowApiUrl: value.LUNCHFLOW_API_URL.replace(/\/+$/, ''),
+    connectionSyncIntervalMinutes: value.CONNECTION_SYNC_INTERVAL_MINUTES,
     version: env.npm_package_version ?? '0.0.1',
   };
 }

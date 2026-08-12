@@ -1,29 +1,39 @@
 import { randomUUID } from 'node:crypto';
 
-import type { Account, AccountInput, AccountType } from '@finai/shared';
+import type { Account, AccountConnection, AccountInput, AccountType } from '@finai/shared';
 import { asc, eq, getTableColumns, sql } from 'drizzle-orm';
 
 import type { Db } from '../client.js';
 import { accounts, transactions } from '../schema.js';
+import { ConnectionRepository } from './connections.js';
 
 /**
  * Account balances are derived: opening balance plus every transaction. Storing
  * a running balance would drift the moment a transaction is edited or deleted.
  */
 export class AccountRepository {
-  constructor(private readonly db: Db) {}
+  private readonly links: ConnectionRepository;
+
+  constructor(private readonly db: Db) {
+    this.links = new ConnectionRepository(db);
+  }
 
   async list(): Promise<Account[]> {
-    const rows = await this.db
-      .select({
-        ...getTableColumns(accounts),
-        movementMinor: sql<number>`coalesce(sum(${transactions.amountMinor}), 0)`,
-        transactionCount: sql<number>`count(${transactions.id})`,
-      })
-      .from(accounts)
-      .leftJoin(transactions, eq(transactions.accountId, accounts.id))
-      .groupBy(accounts.id)
-      .orderBy(asc(accounts.bank), asc(accounts.name));
+    // The connection lookup is a separate query on purpose: joining it in would
+    // multiply the transaction rows an account is aggregated over.
+    const [rows, connectionsByAccount] = await Promise.all([
+      this.db
+        .select({
+          ...getTableColumns(accounts),
+          movementMinor: sql<number>`coalesce(sum(${transactions.amountMinor}), 0)`,
+          transactionCount: sql<number>`count(${transactions.id})`,
+        })
+        .from(accounts)
+        .leftJoin(transactions, eq(transactions.accountId, accounts.id))
+        .groupBy(accounts.id)
+        .orderBy(asc(accounts.bank), asc(accounts.name)),
+      this.links.statusByAccount() as Promise<Map<string, AccountConnection>>,
+    ]);
 
     return rows.map((row) => ({
       id: row.id,
@@ -34,6 +44,7 @@ export class AccountRepository {
       openingBalanceMinor: row.openingBalanceMinor,
       balanceMinor: row.openingBalanceMinor + Number(row.movementMinor),
       transactionCount: Number(row.transactionCount),
+      connection: connectionsByAccount.get(row.id) ?? null,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     }));

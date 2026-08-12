@@ -5,6 +5,8 @@
  * exact. Negative amounts are money leaving the account.
  */
 
+import type { AccountConnection } from './connections.js';
+
 export type AccountType = 'checking' | 'savings' | 'credit' | 'investment' | 'cash';
 
 export const ACCOUNT_TYPES: readonly AccountType[] = [
@@ -29,6 +31,8 @@ export interface Account {
   /** openingBalanceMinor plus every transaction on the account. */
   balanceMinor: number;
   transactionCount: number;
+  /** The remote account feeding this one, when it is fed by a connection. */
+  connection: AccountConnection | null;
   createdAt: string;
   updatedAt: string;
 }

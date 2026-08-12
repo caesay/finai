@@ -7,6 +7,8 @@ import Fastify, { type FastifyInstance } from 'fastify';
 
 import { ChatStore } from './chat/store.js';
 import { createCodex } from './codex/client.js';
+import { createProviders, type ProviderRegistry } from './connections/providers/index.js';
+import { startConnectionSync } from './connections/scheduler.js';
 import type { Config } from './config.js';
 import { openDatabase, openMemoryDatabase } from './db/client.js';
 import { createRepositories, type Repositories } from './db/repositories/index.js';
@@ -59,9 +61,12 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   app.decorate('codex', createCodex(config));
   app.decorate('chatStore', chatStore);
   app.decorate('repositories', repositories);
+  app.decorate('providers', createProviders(config));
   app.addHook('onClose', () => {
     database.close();
   });
+
+  startConnectionSync(app);
 
   await app.register(registerRoutes, { prefix: '/api' });
 
@@ -105,5 +110,6 @@ declare module 'fastify' {
     codex: Codex;
     chatStore: ChatStore;
     repositories: Repositories;
+    providers: ProviderRegistry;
   }
 }

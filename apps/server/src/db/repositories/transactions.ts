@@ -154,6 +154,21 @@ export class TransactionRepository {
         .filter((value): value is string => value !== null && wanted.has(value)),
     );
   }
+
+  /**
+   * The newest date already held on an account, or null when it holds nothing.
+   * A connection sync starts here so it never reaches back over history you
+   * already have.
+   */
+  async latestPostedAt(accountId: string): Promise<string | null> {
+    const rows = await this.db
+      .select({ postedAt: sql<string | null>`max(${transactions.postedAt})` })
+      .from(transactions)
+      .where(eq(transactions.accountId, accountId))
+      .limit(1);
+
+    return rows[0]?.postedAt ?? null;
+  }
 }
 
 const selection = {

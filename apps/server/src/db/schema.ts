@@ -54,6 +54,63 @@ export const transactions = sqliteTable(
   ],
 );
 
+/**
+ * An aggregator holding credentials for one or more remote accounts.
+ *
+ * The API key is stored as given: this is a single-user homelab deployment with
+ * no auth in front of the database, so encrypting it here would only move the
+ * key that decrypts it into the same volume.
+ */
+export const connections = sqliteTable('connections', {
+  id: text('id').primaryKey(),
+  provider: text('provider').notNull(),
+  name: text('name').notNull(),
+  apiKey: text('api_key').notNull(),
+  status: text('status').notNull().default('active'),
+  /** JSON blob of ConnectionSettings. */
+  settingsJson: text('settings_json').notNull().default('{}'),
+  lastSyncedAt: text('last_synced_at'),
+  lastError: text('last_error'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+/**
+ * One remote account at a connection, and the local account it feeds.
+ *
+ * A null `accountId` means the remote account was reviewed and ignored, which
+ * is different from never having been seen — the row is still here, so it can
+ * be linked later without a fresh review.
+ */
+export const connectionAccounts = sqliteTable(
+  'connection_accounts',
+  {
+    id: text('id').primaryKey(),
+    connectionId: text('connection_id')
+      .notNull()
+      .references(() => connections.id, { onDelete: 'cascade' }),
+    remoteId: text('remote_id').notNull(),
+    remoteName: text('remote_name').notNull(),
+    institutionName: text('institution_name').notNull(),
+    institutionLogo: text('institution_logo'),
+    /** The upstream open banking provider, e.g. "gocardless". */
+    remoteProvider: text('remote_provider'),
+    currency: text('currency'),
+    /** Last status the provider reported for this bank link. */
+    status: text('status').notNull().default('unknown'),
+    accountId: text('account_id').references(() => accounts.id, { onDelete: 'set null' }),
+    anchorBalance: integer('anchor_balance', { mode: 'boolean' }).notNull().default(false),
+    lastSyncedAt: text('last_synced_at'),
+    lastError: text('last_error'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => [
+    index('connection_accounts_connection_idx').on(table.connectionId),
+    index('connection_accounts_account_idx').on(table.accountId),
+  ],
+);
+
 export const automations = sqliteTable('automations', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),

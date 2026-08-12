@@ -3,6 +3,7 @@ import { AccountRepository } from './accounts.js';
 import { AuditRepository } from './audit.js';
 import { AutomationRepository } from './automations.js';
 import { CategoryRepository } from './categories.js';
+import { ConnectionRepository } from './connections.js';
 import { TransactionRepository } from './transactions.js';
 
 /**
@@ -15,6 +16,7 @@ export interface Repositories {
   transactions: TransactionRepository;
   automations: AutomationRepository;
   audit: AuditRepository;
+  connections: ConnectionRepository;
 }
 
 export function createRepositories(db: Db): Repositories {
@@ -24,5 +26,6 @@ export function createRepositories(db: Db): Repositories {
     transactions: new TransactionRepository(db),
     automations: new AutomationRepository(db),
     audit: new AuditRepository(db),
+    connections: new ConnectionRepository(db),
   };
 }
