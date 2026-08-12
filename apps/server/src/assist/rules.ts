@@ -9,6 +9,7 @@ import type {
 import type { Codex } from '@openai/codex-sdk';
 
 import { matches } from '../automations/engine.js';
+import { threadOptions } from '../codex/client.js';
 import type { Config } from '../config.js';
 import type { Repositories } from '../db/repositories/index.js';
 
@@ -100,13 +101,7 @@ export async function proposeRule(
     deps.repositories.automations.list(),
   ]);
 
-  const thread = deps.codex.startThread({
-    sandboxMode: 'read-only',
-    approvalPolicy: 'never',
-    skipGitRepoCheck: true,
-    workingDirectory: deps.config.dataDir,
-    ...(deps.config.codexModel ? { model: deps.config.codexModel } : {}),
-  });
+  const thread = deps.codex.startThread(threadOptions(deps.config));
 
   const turn = await thread.run(
     buildPrompt(transaction, neighbours.items, categories, automations),

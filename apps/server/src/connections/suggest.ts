@@ -8,6 +8,7 @@ import type {
 import { ACCOUNT_TYPES } from '@finai/shared';
 import type { Codex } from '@openai/codex-sdk';
 
+import { threadOptions } from '../codex/client.js';
 import type { Config } from '../config.js';
 
 /** How long the assistant may spend proposing a mapping. */
@@ -74,13 +75,7 @@ export async function suggestLinks(
 ): Promise<LinkSuggestion> {
   if (remote.length === 0) return { plan: [], confidence: 'high', reason: '' };
 
-  const thread = codex.startThread({
-    sandboxMode: 'read-only',
-    approvalPolicy: 'never',
-    skipGitRepoCheck: true,
-    workingDirectory: config.dataDir,
-    ...(config.codexModel ? { model: config.codexModel } : {}),
-  });
+  const thread = codex.startThread(threadOptions(config));
 
   const input = [
     'Decide what each remote bank account from an aggregator should do here.',

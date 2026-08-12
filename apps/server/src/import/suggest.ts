@@ -1,6 +1,7 @@
 import type { CsvMapping, CsvMappingSuggestion } from '@finai/shared';
 import type { Codex } from '@openai/codex-sdk';
 
+import { threadOptions } from '../codex/client.js';
 import type { Config } from '../config.js';
 import type { ParsedCsv } from './csv.js';
 
@@ -76,13 +77,7 @@ export async function suggestMapping(
   config: Config,
   csv: ParsedCsv,
 ): Promise<CsvMappingSuggestion> {
-  const thread = codex.startThread({
-    sandboxMode: 'read-only',
-    approvalPolicy: 'never',
-    skipGitRepoCheck: true,
-    workingDirectory: config.dataDir,
-    ...(config.codexModel ? { model: config.codexModel } : {}),
-  });
+  const thread = codex.startThread(threadOptions(config));
 
   const sample = csv.rows.slice(0, 8);
   const input = [

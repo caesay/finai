@@ -6,7 +6,7 @@ import type { Codex } from '@openai/codex-sdk';
 import Fastify, { type FastifyInstance } from 'fastify';
 
 import { ChatStore } from './chat/store.js';
-import { createCodex } from './codex/client.js';
+import { createCodex, ensureAgentDirectory } from './codex/client.js';
 import { createProviders, type ProviderRegistry } from './connections/providers/index.js';
 import { startConnectionSync } from './connections/scheduler.js';
 import type { Config } from './config.js';
@@ -49,6 +49,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
 
   const chatStore = new ChatStore(config.dataDir);
   await chatStore.init();
+  await ensureAgentDirectory(config);
 
   // Tests run against a throwaway in-memory database.
   const database =

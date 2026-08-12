@@ -10,6 +10,7 @@ import { codexRoutes } from './codex.js';
 import { connectionRoutes } from './connections.js';
 import { healthRoutes } from './health.js';
 import { importRoutes } from './imports.js';
+import { mcpRoutes } from './mcp.js';
 import { transactionRoutes } from './transactions.js';
 
 /** Mounts every API route. Registered under the `/api` prefix. */
@@ -25,4 +26,5 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   await app.register(importRoutes);
   await app.register(connectionRoutes);
   await app.register(assistRoutes);
+  await app.register(mcpRoutes);
 }

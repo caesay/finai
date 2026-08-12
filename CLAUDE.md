@@ -131,6 +131,25 @@ Credentials come from `CODEX_HOME` (`/data/codex`, a mounted volume), so a singl
 `codex login` covers both the chat assistant and AI automations and inference is
 billed to the subscription rather than to an API key.
 
+**The agent has no shell and no filesystem.** `shell_tool`, `unified_exec`,
+`browser_use` and `computer_use` are switched off through Codex feature flags in
+`codex/client.ts`, so the model is never offered them and does not go hunting
+for the database on disk. Every thread also runs in `DATA_DIR/agent`, which is
+kept empty, so a future Codex release that hands out a file tool anyway finds
+nothing. Use `threadOptions(config)` to start a thread — never hand-roll the
+options, or a turn will end up pointed at the data directory again.
+
+Its reach is `mcp/tools.ts`, served over streamable HTTP at `/api/mcp` by this
+same server (so tools share the repositories the routes use) and registered with
+the CLI via config overrides. Reads are broad; writes are narrow on purpose —
+categorize a transaction, and create, edit, delete or run an automation. There
+is deliberately no tool that creates or deletes a transaction, account or
+connection: those record what a bank did, and the assistant gets opinions about
+them rather than authorship. Every write it makes is audited as `assistant`.
+
+A tool that fails returns `isError` with an explanation rather than throwing, so
+the model can correct itself instead of the turn dying.
+
 ## Icons
 
 Icons come from the **Icons8 MCP server**, style **`forma-light-sharp`**

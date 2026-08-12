@@ -7,6 +7,7 @@ import type {
 } from '@finai/shared';
 import type { Codex } from '@openai/codex-sdk';
 
+import { threadOptions } from '../codex/client.js';
 import type { Config } from '../config.js';
 import type { AuditRepository } from '../db/repositories/audit.js';
 import type { AutomationRepository } from '../db/repositories/automations.js';
@@ -186,13 +187,7 @@ async function askAssistant(
   transaction: Transaction,
   categories: Category[],
 ): Promise<string | null> {
-  const thread = deps.codex.startThread({
-    sandboxMode: 'read-only',
-    approvalPolicy: 'never',
-    skipGitRepoCheck: true,
-    workingDirectory: deps.config.dataDir,
-    ...(deps.config.codexModel ? { model: deps.config.codexModel } : {}),
-  });
+  const thread = deps.codex.startThread(threadOptions(deps.config));
 
   const input = [
     'You are categorizing a single bank transaction for a personal finance app.',

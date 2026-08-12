@@ -3,8 +3,35 @@ import { randomUUID } from 'node:crypto';
 import type { Codex, ThreadEvent, ThreadItem } from '@openai/codex-sdk';
 import type { ChatActivity, ChatMessage, ChatStreamEvent, ChatThread } from '@finai/shared';
 
+import { threadOptions } from '../codex/client.js';
 import type { Config } from '../config.js';
 import type { ChatStore } from './store.js';
+
+/**
+ * What the assistant is told before its first message.
+ *
+ * It has no shell and no filesystem — both are switched off in
+ * `codex/client.ts` — so this says where the data actually is, to stop it
+ * hunting for a database it will never find.
+ */
+const BRIEF = [
+  'You are the assistant inside finai, a personal finance tracker.',
+  '',
+  "The user's accounts, transactions, categories, automations and bank",
+  'connections are reachable only through the tools on the "finai" MCP server.',
+  'You have no shell, no filesystem and no network: there is no database file to',
+  'find and no command to run. If a tool for something does not exist, say so',
+  'rather than looking for another way in.',
+  '',
+  'Money is an integer count of minor units — pence or cents — and a negative',
+  'amount means money left the account. Never write an amount as a decimal back',
+  'into a tool.',
+  '',
+  'Prefer an automation over editing transactions one at a time: a rule handles',
+  'everything that arrives later, and run_automation applies it to what is',
+  'already here. Dry run it and tell the user the numbers before running it for',
+  'real.',
+].join('\n');
 
 export interface ChatServiceDeps {
   codex: Codex;
@@ -34,19 +61,18 @@ export async function* runTurn(
     createdAt: new Date().toISOString(),
   });
 
-  const options = {
-    sandboxMode: 'read-only' as const,
-    approvalPolicy: 'never' as const,
-    skipGitRepoCheck: true,
-    workingDirectory: config.dataDir,
-    ...(config.codexModel ? { model: config.codexModel } : {}),
-  };
+  const options = threadOptions(config);
 
+  const isNewThread = !thread.codexThreadId;
   const codexThread = thread.codexThreadId
     ? codex.resumeThread(thread.codexThreadId, options)
     : codex.startThread(options);
 
-  const turn = await codexThread.runStreamed(text, { signal });
+  // The brief goes in front of the first message of a thread only; Codex keeps
+  // it in the conversation from there.
+  const turn = await codexThread.runStreamed(isNewThread ? `${BRIEF}\n\n${text}` : text, {
+    signal,
+  });
 
   // Codex numbers items from zero on every turn, so ids are only unique within
   // a turn. Namespacing them keeps transcript entries distinct.
