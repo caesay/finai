@@ -566,6 +566,27 @@ textarea:focus-visible {
   font-size: 0.875rem;
 }
 
+.reconcile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-inset);
+  font-size: 0.875rem;
+}
+
+.reconcile__line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.reconcile__detail {
+  font-size: 0.75rem;
+}
+
 .import-done {
   display: flex;
   flex-direction: column;
@@ -632,6 +653,19 @@ textarea:focus-visible {
 .table__empty {
   padding: 2rem 0.75rem;
   text-align: center;
+}
+
+/* Rows the import inserted to reconcile a statement, called out so they are
+   never mistaken for something the bank actually charged. */
+.row--adjustment td {
+  color: var(--danger);
+  background: #f8717110;
+}
+
+.row--adjustment td .dim,
+.row--adjustment td .amount--positive,
+.row--adjustment td .amount--negative {
+  color: var(--danger);
 }
 
 .cell-stack {

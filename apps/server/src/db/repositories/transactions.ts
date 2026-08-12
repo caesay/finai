@@ -93,6 +93,8 @@ export class TransactionRepository {
       categoryId: input.categoryId ?? null,
       externalId: input.externalId ?? null,
       notes: input.notes ?? null,
+      statementBalanceMinor: input.statementBalanceMinor ?? null,
+      kind: input.kind ?? 'normal',
       createdAt: now,
       updatedAt: now,
     });
@@ -116,6 +118,11 @@ export class TransactionRepository {
         categoryId: input.categoryId === undefined ? existing.categoryId : input.categoryId,
         externalId: input.externalId === undefined ? existing.externalId : input.externalId,
         notes: input.notes === undefined ? existing.notes : input.notes,
+        statementBalanceMinor:
+          input.statementBalanceMinor === undefined
+            ? existing.statementBalanceMinor
+            : input.statementBalanceMinor,
+        kind: input.kind ?? existing.kind,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(transactions.id, id));
@@ -158,6 +165,8 @@ const selection = {
   categoryId: transactions.categoryId,
   externalId: transactions.externalId,
   notes: transactions.notes,
+  statementBalanceMinor: transactions.statementBalanceMinor,
+  kind: transactions.kind,
   createdAt: transactions.createdAt,
   updatedAt: transactions.updatedAt,
   accountName: accounts.name,
@@ -172,9 +181,11 @@ type Row = {
     ? string | null
     : K extends 'externalId' | 'notes'
       ? string | null
-      : K extends 'amountMinor'
-        ? number
-        : string;
+      : K extends 'statementBalanceMinor'
+        ? number | null
+        : K extends 'amountMinor'
+          ? number
+          : string;
 };
 
 function toTransaction(row: Row): Transaction {
@@ -192,6 +203,9 @@ function toTransaction(row: Row): Transaction {
     categoryColor: row.categoryColor,
     externalId: row.externalId,
     notes: row.notes,
+    statementBalanceMinor:
+      row.statementBalanceMinor === null ? null : Number(row.statementBalanceMinor),
+    kind: row.kind === 'adjustment' ? 'adjustment' : 'normal',
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

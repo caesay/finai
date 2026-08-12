@@ -3,6 +3,7 @@ import type {
   CsvMapping,
   CsvPreview,
   CsvPreviewRow,
+  CsvReconciliation,
   CsvRowError,
 } from '@finai/shared';
 
@@ -16,24 +17,149 @@ import type { ParsedCsv } from './csv.js';
  */
 export function applyMapping(csv: ParsedCsv, mapping: CsvMapping, limit?: number): CsvPreview {
   const index = columnIndexes(csv.headers, mapping);
-  const rows: CsvPreviewRow[] = [];
+  const converted: CsvPreviewRow[] = [];
   const errors: CsvRowError[] = [];
-  let validRows = 0;
 
   for (const [position, cells] of csv.rows.entries()) {
     const rowNumber = position + 1;
-    const converted = convertRow(cells, index, mapping, rowNumber);
+    const row = convertRow(cells, index, mapping, rowNumber);
 
-    if ('message' in converted) {
-      errors.push({ row: rowNumber, message: converted.message });
+    if ('message' in row) {
+      errors.push({ row: rowNumber, message: row.message });
       continue;
     }
 
-    validRows += 1;
-    if (limit === undefined || rows.length < limit) rows.push(converted);
+    converted.push(row);
   }
 
-  return { rows, errors, validRows };
+  // Reconciliation always looks at the whole file, not just the preview, and
+  // the adjustments it produces are part of what gets imported.
+  const reconciliation = reconcile(converted);
+  const rows = withAdjustments(converted);
+
+  return {
+    rows: limit === undefined ? rows : rows.slice(0, limit),
+    errors,
+    validRows: converted.length,
+    reconciliation,
+  };
+}
+
+/**
+ * Returns the rows in the order they will be imported, with a balance
+ * adjustment inserted wherever the statement's own balances and amounts
+ * disagree.
+ *
+ * The bank's balance column is treated as the truth: if a row moves the balance
+ * by more than its amount explains, something is missing or duplicated upstream,
+ * and an adjustment carries the difference so the account still lands on the
+ * figure the bank reported.
+ */
+export function withAdjustments(rows: CsvPreviewRow[]): CsvPreviewRow[] {
+  const hasBalances = rows.some((row) => row.balanceMinor !== null);
+  if (!hasBalances) return rows;
+
+  const ordered = isNewestFirst(rows) ? [...rows].reverse() : rows;
+  const result: CsvPreviewRow[] = [];
+  let previousBalance: number | null = null;
+
+  for (const row of ordered) {
+    result.push(row);
+
+    if (row.balanceMinor === null) continue;
+
+    if (previousBalance !== null) {
+      const gap = row.balanceMinor - previousBalance - row.amountMinor;
+      if (gap !== 0) result.push(adjustment(row, gap));
+    }
+
+    previousBalance = row.balanceMinor;
+  }
+
+  return result;
+}
+
+function adjustment(after: CsvPreviewRow, amountMinor: number): CsvPreviewRow {
+  return {
+    row: after.row,
+    postedAt: after.postedAt,
+    description: 'Balance adjustment',
+    amountMinor,
+    notes: `Statement balance did not match the transactions around ${after.postedAt}`,
+    // Deterministic, so re-importing the same statement does not stack up
+    // duplicate adjustments.
+    externalId: `adjustment:${after.postedAt}:${String(after.balanceMinor ?? 0)}`,
+    balanceMinor: after.balanceMinor,
+    kind: 'adjustment',
+  };
+}
+
+/**
+ * Walks the statement oldest-first and checks that each amount matches the step
+ * between consecutive balances.
+ *
+ * Statements come in both orders, so the direction is taken from the dates. The
+ * balance before the earliest row is what the account's opening balance has to
+ * be for the derived balance to agree with the bank.
+ */
+export function reconcile(rows: CsvPreviewRow[]): CsvReconciliation {
+  const withBalance = rows.filter(
+    (row): row is CsvPreviewRow & { balanceMinor: number } => row.balanceMinor !== null,
+  );
+
+  if (withBalance.length === 0) {
+    return {
+      available: false,
+      checked: 0,
+      mismatches: 0,
+      firstMismatch: null,
+      impliedOpeningBalanceMinor: null,
+      closingBalanceMinor: null,
+    };
+  }
+
+  const ordered = isNewestFirst(withBalance) ? [...withBalance].reverse() : withBalance;
+  const first = ordered[0];
+  const last = ordered[ordered.length - 1];
+  if (!first || !last) throw new Error('Unreachable: ordered statement rows are non-empty');
+
+  let checked = 0;
+  let mismatches = 0;
+  let firstMismatch: CsvReconciliation['firstMismatch'] = null;
+
+  for (let position = 1; position < ordered.length; position += 1) {
+    const previous = ordered[position - 1];
+    const current = ordered[position];
+    if (!previous || !current) continue;
+
+    checked += 1;
+    const expected = current.balanceMinor - previous.balanceMinor;
+    if (expected === current.amountMinor) continue;
+
+    mismatches += 1;
+    firstMismatch ??= {
+      row: current.row,
+      expectedMinor: expected,
+      actualMinor: current.amountMinor,
+    };
+  }
+
+  return {
+    available: true,
+    checked,
+    mismatches,
+    firstMismatch,
+    impliedOpeningBalanceMinor: first.balanceMinor - first.amountMinor,
+    closingBalanceMinor: last.balanceMinor,
+  };
+}
+
+function isNewestFirst(rows: CsvPreviewRow[]): boolean {
+  const first = rows[0];
+  const last = rows[rows.length - 1];
+  if (!first || !last) return false;
+
+  return last.postedAt < first.postedAt;
 }
 
 interface ColumnIndexes {
@@ -44,6 +170,8 @@ interface ColumnIndexes {
   credit: number;
   notes: number;
   externalId: number;
+  balance: number;
+  fee: number;
 }
 
 function columnIndexes(headers: string[], mapping: CsvMapping): ColumnIndexes {
@@ -58,6 +186,8 @@ function columnIndexes(headers: string[], mapping: CsvMapping): ColumnIndexes {
     credit: find(mapping.creditColumn),
     notes: find(mapping.notesColumn),
     externalId: find(mapping.externalIdColumn),
+    balance: find(mapping.balanceColumn),
+    fee: find(mapping.feeColumn),
   };
 }
 
@@ -81,15 +211,44 @@ function convertRow(
   // so the flip only applies to a single signed column. Without this guard a
   // mapping that sets both lands every row with the wrong sign.
   const invert = mapping.invertAmount && mapping.amountMode === 'single';
+  const signed = invert ? -amount : amount;
+
+  // A separately billed fee left the account too, so folding it in keeps both
+  // the spend and the running balance honest.
+  const fee = index.fee === -1 ? null : parseAmount(cell(cells, index.fee));
+  const amountMinor = fee === null ? signed : signed - Math.abs(fee);
+  const balanceMinor = index.balance === -1 ? null : parseAmount(cell(cells, index.balance));
+  const reference = index.externalId === -1 ? '' : cell(cells, index.externalId).trim();
 
   return {
     row: rowNumber,
     postedAt,
     description,
-    amountMinor: invert ? -amount : amount,
+    amountMinor,
     notes: index.notes === -1 ? null : cell(cells, index.notes).trim() || null,
-    externalId: index.externalId === -1 ? null : cell(cells, index.externalId).trim() || null,
+    externalId: reference || syntheticReference(postedAt, amountMinor, balanceMinor),
+    balanceMinor,
+    kind: 'normal',
   };
+}
+
+/**
+ * Many statements carry no per-row reference, which would make re-importing an
+ * overlapping month duplicate everything. A running balance is enough to
+ * identify a row within an account — no two rows can leave the account at the
+ * same figure on the same day for the same amount — so it stands in as a key.
+ *
+ * Without a balance column there is nothing safe to key on: two identical
+ * purchases on one day are genuinely two transactions, so rows stay unkeyed and
+ * a re-import will duplicate them.
+ */
+function syntheticReference(
+  postedAt: string,
+  amountMinor: number,
+  balanceMinor: number | null,
+): string | null {
+  if (balanceMinor === null) return null;
+  return `row:${postedAt}:${String(amountMinor)}:${String(balanceMinor)}`;
 }
 
 function cell(cells: string[], index: number): string {

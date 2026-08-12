@@ -23,6 +23,8 @@ const mappingSchema = z.object({
   invertAmount: z.boolean(),
   notesColumn: z.string(),
   externalIdColumn: z.string(),
+  balanceColumn: z.string(),
+  feeColumn: z.string(),
 });
 
 const csvSchema = z.string().min(1).max(20_000_000);
@@ -70,8 +72,14 @@ export async function importRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.post('/imports/commit', async (request, reply) => {
-    const { csv, mapping, accountId } = z
-      .object({ csv: csvSchema, mapping: mappingSchema, accountId: z.string().uuid() })
+    const { csv, mapping, accountId, setOpeningBalance } = z
+      .object({
+        csv: csvSchema,
+        mapping: mappingSchema,
+        accountId: z.string().uuid(),
+        /** Anchors the account to the balance the statement started from. */
+        setOpeningBalance: z.boolean().optional(),
+      })
       .parse(request.body);
 
     const account = await app.repositories.accounts.get(accountId);
@@ -90,6 +98,7 @@ export async function importRoutes(app: FastifyInstance): Promise<void> {
 
     let imported = 0;
     let skipped = 0;
+    let adjustments = 0;
 
     for (const row of converted.rows) {
       if (row.externalId && seen.has(row.externalId)) {
@@ -104,7 +113,11 @@ export async function importRoutes(app: FastifyInstance): Promise<void> {
         amountMinor: row.amountMinor,
         notes: row.notes,
         externalId: row.externalId,
+        statementBalanceMinor: row.balanceMinor,
+        kind: row.kind,
       });
+
+      if (row.kind === 'adjustment') adjustments += 1;
 
       await runAutomationsForTransaction(
         {
@@ -122,15 +135,31 @@ export async function importRoutes(app: FastifyInstance): Promise<void> {
       imported += 1;
     }
 
+    // Anchoring means the derived balance agrees with the bank, instead of
+    // starting from whatever the account's opening balance happened to be.
+    const implied = converted.reconciliation.impliedOpeningBalanceMinor;
+    const anchored = setOpeningBalance === true && implied !== null;
+    if (anchored) {
+      await app.repositories.accounts.update(accountId, { openingBalanceMinor: implied });
+    }
+
     await app.repositories.audit.record({
       actor: 'user',
       entity: 'account',
       entityId: accountId,
       action: 'update',
-      summary: `Imported ${String(imported)} transactions from CSV into ${account.bank} — ${account.name}`,
+      summary:
+        `Imported ${String(imported)} transactions from CSV into ${account.bank} — ${account.name}` +
+        (adjustments > 0 ? `, including ${String(adjustments)} balance adjustments` : ''),
     });
 
-    const result: CsvImportResult = { imported, skipped, errors: converted.errors };
+    const result: CsvImportResult = {
+      imported,
+      skipped,
+      adjustments,
+      errors: converted.errors,
+      openingBalanceMinor: anchored ? implied : null,
+    };
     return reply.status(201).send(result);
   });
 }

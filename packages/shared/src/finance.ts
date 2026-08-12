@@ -55,6 +55,13 @@ export interface CategoryInput {
   color?: string;
 }
 
+/**
+ * 'adjustment' rows are inserted by an import when a statement's balances and
+ * amounts disagree — a missing or duplicated row upstream. They behave like any
+ * other transaction but are called out in the UI.
+ */
+export type TransactionKind = 'normal' | 'adjustment';
+
 export interface Transaction {
   id: string;
   accountId: string;
@@ -72,6 +79,12 @@ export interface Transaction {
   /** Identifier from the source system, used to skip duplicates on import. */
   externalId: string | null;
   notes: string | null;
+  /**
+   * Balance the statement reported after this transaction. Kept as imported —
+   * the bank's own figure is more trustworthy than anything recomputed here.
+   */
+  statementBalanceMinor: number | null;
+  kind: TransactionKind;
   createdAt: string;
   updatedAt: string;
 }
@@ -84,6 +97,8 @@ export interface TransactionInput {
   categoryId?: string | null;
   externalId?: string | null;
   notes?: string | null;
+  statementBalanceMinor?: number | null;
+  kind?: TransactionKind;
 }
 
 export type TransactionSortField = 'postedAt' | 'amountMinor' | 'description';

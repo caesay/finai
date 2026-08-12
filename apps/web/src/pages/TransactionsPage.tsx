@@ -89,6 +89,17 @@ export function TransactionsPage() {
             </div>
           ),
         }),
+        helper.accessor('statementBalanceMinor', {
+          header: 'Balance',
+          cell: (context) => {
+            const balance = context.getValue();
+            return (
+              <span className="mono dim">
+                {balance === null ? '—' : formatMoney(balance, context.row.original.currency)}
+              </span>
+            );
+          },
+        }),
         helper.accessor('accountName', {
           header: 'Account',
           cell: (context) => (
@@ -296,7 +307,10 @@ export function TransactionsPage() {
 
           <tbody>
             {table.getRowModel().rows.map((row) => (
-              <tr key={row.id}>
+              <tr
+                key={row.id}
+                className={row.original.kind === 'adjustment' ? 'row--adjustment' : undefined}
+              >
                 {row.getAllCells().map((cell) => (
                   <td key={cell.id}>
                     <table.FlexRender cell={cell} />
@@ -307,7 +321,7 @@ export function TransactionsPage() {
 
             {transactions.data?.items.length === 0 && (
               <tr>
-                <td colSpan={5} className="dim table__empty">
+                <td colSpan={6} className="dim table__empty">
                   {transactions.isPending ? 'Loading…' : 'No transactions match this view.'}
                 </td>
               </tr>

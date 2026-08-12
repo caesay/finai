@@ -35,6 +35,15 @@ const OUTPUT_SCHEMA = {
       type: 'string',
       description: 'A per-row unique reference, if the file has one. Empty string otherwise.',
     },
+    balanceColumn: {
+      type: 'string',
+      description: 'Running account balance after each row, if present. Empty string otherwise.',
+    },
+    feeColumn: {
+      type: 'string',
+      description:
+        'A fee billed separately from the amount, if the file has one. Empty string otherwise.',
+    },
     confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
     reason: { type: 'string', description: 'One or two sentences on how the columns were read.' },
   },
@@ -49,6 +58,8 @@ const OUTPUT_SCHEMA = {
     'invertAmount',
     'notesColumn',
     'externalIdColumn',
+    'balanceColumn',
+    'feeColumn',
     'confidence',
     'reason',
   ],
@@ -90,6 +101,8 @@ export async function suggestMapping(
     '  must be false there.',
     '- With a single column, set invertAmount only when that column writes',
     '  spending as a positive number.',
+    '- Map balanceColumn when the file carries a running account balance, and',
+    '  feeColumn when a fee is billed separately from the amount.',
     '- Return an empty string for any column that does not exist in this file.',
     '',
     'Answer only with the requested JSON. Do not run any commands.',
@@ -136,6 +149,8 @@ function toSuggestion(response: string, headers: string[]): CsvMappingSuggestion
     invertAmount: parsed.invertAmount === true,
     notesColumn: column(parsed.notesColumn),
     externalIdColumn: column(parsed.externalIdColumn),
+    balanceColumn: column(parsed.balanceColumn),
+    feeColumn: column(parsed.feeColumn),
   };
 
   return {
@@ -158,5 +173,7 @@ export function emptyMapping(): CsvMapping {
     invertAmount: false,
     notesColumn: '',
     externalIdColumn: '',
+    balanceColumn: '',
+    feeColumn: '',
   };
 }

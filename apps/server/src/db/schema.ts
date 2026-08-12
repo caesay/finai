@@ -41,6 +41,9 @@ export const transactions = sqliteTable(
     categoryId: text('category_id').references(() => categories.id, { onDelete: 'set null' }),
     externalId: text('external_id'),
     notes: text('notes'),
+    /** Balance the statement reported after this row, when it carried one. */
+    statementBalanceMinor: integer('statement_balance_minor'),
+    kind: text('kind').notNull().default('normal'),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
   },

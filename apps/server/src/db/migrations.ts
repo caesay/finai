@@ -78,4 +78,15 @@ export const MIGRATIONS: Migration[] = [
       `CREATE INDEX IF NOT EXISTS audit_entity_idx ON audit_events(entity, entity_id)`,
     ],
   },
+  {
+    name: '0002_statement_balance',
+    statements: [
+      // The balance a statement reports after a row is authoritative, so it is
+      // kept rather than recomputed.
+      `ALTER TABLE transactions ADD COLUMN statement_balance_minor INTEGER`,
+      // 'adjustment' marks a row the import inserted to reconcile a statement
+      // whose balances and amounts disagree.
+      `ALTER TABLE transactions ADD COLUMN kind TEXT NOT NULL DEFAULT 'normal'`,
+    ],
+  },
 ];

@@ -16,6 +16,8 @@ function mapping(overrides: Partial<CsvMapping> = {}): CsvMapping {
     invertAmount: false,
     notesColumn: '',
     externalIdColumn: '',
+    balanceColumn: '',
+    feeColumn: '',
     ...overrides,
   };
 }
@@ -147,6 +149,123 @@ test('carries notes and the unique reference through when mapped', () => {
   const preview = applyMapping(csv, mapping({ notesColumn: 'Memo', externalIdColumn: 'Ref' }));
 
   expect(preview.rows[0]).toMatchObject({ notes: 'card 1234', externalId: 'abc-1' });
+});
+
+test('folds a separately billed fee into the amount', () => {
+  // Revolut-style: the balance moves by amount minus fee, so the fee has to be
+  // part of the transaction for the statement to reconcile.
+  const csv = parseCsv('Date,Description,Amount,Fee\n2026-08-01,Transfer,-100.00,0.50\n');
+  const preview = applyMapping(csv, mapping({ feeColumn: 'Fee' }));
+
+  expect(preview.rows[0]?.amountMinor).toBe(-10050);
+});
+
+test('reconciles a statement whose balances agree with its amounts', () => {
+  const csv = parseCsv(
+    [
+      'Date,Description,Amount,Balance',
+      '2026-08-01,Coffee,-3.50,996.50',
+      '2026-08-02,Lunch,-10.00,986.50',
+      '2026-08-03,Salary,500.00,1486.50',
+    ].join('\n'),
+  );
+
+  const preview = applyMapping(csv, mapping({ balanceColumn: 'Balance' }));
+
+  expect(preview.reconciliation).toMatchObject({
+    available: true,
+    checked: 2,
+    mismatches: 0,
+    impliedOpeningBalanceMinor: 100000,
+    closingBalanceMinor: 148650,
+  });
+  expect(preview.rows).toHaveLength(3);
+});
+
+test('inserts a balance adjustment where a statement row is missing', () => {
+  // The 40.00 step between rows two and three is unexplained: something the
+  // bank charged is absent from the file.
+  const csv = parseCsv(
+    [
+      'Date,Description,Amount,Balance',
+      '2026-08-01,Coffee,-3.50,996.50',
+      '2026-08-02,Lunch,-10.00,946.50',
+    ].join('\n'),
+  );
+
+  const preview = applyMapping(csv, mapping({ balanceColumn: 'Balance' }));
+
+  expect(preview.reconciliation.mismatches).toBe(1);
+  expect(preview.reconciliation.firstMismatch).toMatchObject({
+    row: 2,
+    expectedMinor: -5000,
+    actualMinor: -1000,
+  });
+
+  const adjustment = preview.rows.find((row) => row.kind === 'adjustment');
+  expect(adjustment).toMatchObject({
+    description: 'Balance adjustment',
+    amountMinor: -4000,
+    postedAt: '2026-08-02',
+  });
+  // Deterministic, so re-importing the same statement does not stack them up.
+  expect(adjustment?.externalId).toBe('adjustment:2026-08-02:94650');
+});
+
+test('reads a newest-first statement in the right direction', () => {
+  const csv = parseCsv(
+    [
+      'Date,Description,Amount,Balance',
+      '2026-08-03,Salary,500.00,1486.50',
+      '2026-08-02,Lunch,-10.00,986.50',
+      '2026-08-01,Coffee,-3.50,996.50',
+    ].join('\n'),
+  );
+
+  const preview = applyMapping(csv, mapping({ balanceColumn: 'Balance' }));
+
+  expect(preview.reconciliation.mismatches).toBe(0);
+  expect(preview.reconciliation.impliedOpeningBalanceMinor).toBe(100000);
+  expect(preview.rows.map((row) => row.postedAt)).toEqual([
+    '2026-08-01',
+    '2026-08-02',
+    '2026-08-03',
+  ]);
+});
+
+test('keys rows off the balance when the file carries no reference', () => {
+  const csv = parseCsv('Date,Description,Amount,Balance\n2026-08-01,Coffee,-3.50,996.50\n');
+  const preview = applyMapping(csv, mapping({ balanceColumn: 'Balance' }));
+
+  // Re-importing an overlapping statement has to skip this row rather than
+  // duplicate it.
+  expect(preview.rows[0]?.externalId).toBe('row:2026-08-01:-350:99650');
+});
+
+test('leaves rows unkeyed when there is no reference and no balance', () => {
+  // Two identical purchases in a day are genuinely two transactions, so there
+  // is nothing safe to key on.
+  const csv = parseCsv('Date,Description,Amount\n2026-08-01,Coffee,-3.50\n');
+  const preview = applyMapping(csv, mapping());
+
+  expect(preview.rows[0]?.externalId).toBeNull();
+});
+
+test('a real reference column wins over the synthesised one', () => {
+  const csv = parseCsv(
+    'Date,Description,Amount,Balance,Ref\n2026-08-01,Coffee,-3.50,996.50,TXN-9\n',
+  );
+  const preview = applyMapping(csv, mapping({ balanceColumn: 'Balance', externalIdColumn: 'Ref' }));
+
+  expect(preview.rows[0]?.externalId).toBe('TXN-9');
+});
+
+test('a file with no balance column reports nothing to reconcile', () => {
+  const csv = parseCsv('Date,Description,Amount\n2026-08-01,Coffee,-3.50\n');
+  const preview = applyMapping(csv, mapping());
+
+  expect(preview.reconciliation.available).toBe(false);
+  expect(preview.rows.every((row) => row.kind === 'normal')).toBe(true);
 });
 
 test('a column the mapping names but the file lacks is treated as absent', () => {

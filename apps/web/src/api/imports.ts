@@ -15,8 +15,9 @@ export const commitCsv = (
   csv: string,
   mapping: CsvMapping,
   accountId: string,
+  options: { setOpeningBalance: boolean },
 ): Promise<CsvImportResult> =>
   apiFetch<CsvImportResult>('/imports/commit', {
     method: 'POST',
-    body: JSON.stringify({ csv, mapping, accountId }),
+    body: JSON.stringify({ csv, mapping, accountId, ...options }),
   });

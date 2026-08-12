@@ -1,4 +1,10 @@
-import type { Account, CsvDateFormat, CsvMapping, CsvPreview } from '@finai/shared';
+import type {
+  Account,
+  CsvDateFormat,
+  CsvMapping,
+  CsvPreview,
+  CsvReconciliation,
+} from '@finai/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
@@ -39,6 +45,7 @@ export function ImportDialog({ accounts, initialAccountId, onClose }: ImportDial
     initialAccountId ?? (accounts.length === 1 ? (accounts[0]?.id ?? '') : ''),
   );
   const [isDragging, setDragging] = useState(false);
+  const [anchorOpeningBalance, setAnchorOpeningBalance] = useState(true);
 
   const analyze = useMutation({
     mutationFn: analyzeCsv,
@@ -58,7 +65,10 @@ export function ImportDialog({ accounts, initialAccountId, onClose }: ImportDial
   });
 
   const commit = useMutation({
-    mutationFn: () => commitCsv(csv, mapping as CsvMapping, accountId),
+    mutationFn: () =>
+      commitCsv(csv, mapping as CsvMapping, accountId, {
+        setOpeningBalance: anchorOpeningBalance && preview?.reconciliation.available === true,
+      }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['transactions'] });
       await queryClient.invalidateQueries({ queryKey: ['accounts'] });
@@ -113,6 +123,17 @@ export function ImportDialog({ accounts, initialAccountId, onClose }: ImportDial
                 Imported <strong>{commit.data.imported}</strong> transactions
                 {commit.data.skipped > 0 && `, skipped ${commit.data.skipped} already seen`}.
               </p>
+              {commit.data.adjustments > 0 && (
+                <p className="error">
+                  {commit.data.adjustments} balance adjustments were added where the statement did
+                  not add up.
+                </p>
+              )}
+              {commit.data.openingBalanceMinor !== null && (
+                <p className="dim">
+                  Opening balance set to {formatMoney(commit.data.openingBalanceMinor, currency)}.
+                </p>
+              )}
               {commit.data.errors.length > 0 && (
                 <p className="dim">{commit.data.errors.length} rows could not be read.</p>
               )}
@@ -273,6 +294,15 @@ export function ImportDialog({ accounts, initialAccountId, onClose }: ImportDial
                     />
                   </div>
 
+                  {preview?.reconciliation.available && (
+                    <Reconciliation
+                      reconciliation={preview.reconciliation}
+                      currency={currency}
+                      anchor={anchorOpeningBalance}
+                      onAnchorChange={setAnchorOpeningBalance}
+                    />
+                  )}
+
                   <div className="table-wrap">
                     <table className="table">
                       <thead>
@@ -280,15 +310,24 @@ export function ImportDialog({ accounts, initialAccountId, onClose }: ImportDial
                           <th>Date</th>
                           <th>Description</th>
                           <th>Notes</th>
+                          <th>Balance</th>
                           <th>Amount</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {preview?.rows.map((row) => (
-                          <tr key={row.row}>
+                        {preview?.rows.map((row, position) => (
+                          <tr
+                            key={`${String(row.row)}-${String(position)}`}
+                            className={row.kind === 'adjustment' ? 'row--adjustment' : undefined}
+                          >
                             <td className="mono nowrap">{formatDate(row.postedAt)}</td>
                             <td>{row.description}</td>
                             <td className="dim">{row.notes ?? '—'}</td>
+                            <td className="mono dim">
+                              {row.balanceMinor === null
+                                ? '—'
+                                : formatMoney(row.balanceMinor, currency)}
+                            </td>
                             <td
                               className={`mono ${row.amountMinor < 0 ? 'amount--negative' : 'amount--positive'}`}
                             >
@@ -299,7 +338,7 @@ export function ImportDialog({ accounts, initialAccountId, onClose }: ImportDial
 
                         {preview?.rows.length === 0 && (
                           <tr>
-                            <td colSpan={4} className="dim table__empty">
+                            <td colSpan={5} className="dim table__empty">
                               No row converted with this mapping.
                             </td>
                           </tr>
@@ -347,6 +386,60 @@ export function ImportDialog({ accounts, initialAccountId, onClose }: ImportDial
           </footer>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * What the statement's own balance column says about the mapping. A clean
+ * reconciliation is strong evidence the columns and signs are right; gaps are
+ * imported as visible adjustments rather than silently absorbed.
+ */
+function Reconciliation({
+  reconciliation,
+  currency,
+  anchor,
+  onAnchorChange,
+}: {
+  reconciliation: CsvReconciliation;
+  currency: string;
+  anchor: boolean;
+  onAnchorChange: (value: boolean) => void;
+}) {
+  const clean = reconciliation.mismatches === 0;
+
+  return (
+    <div className="reconcile">
+      <div className="reconcile__line">
+        <span className={`status__dot ${clean ? 'status__dot--ok' : 'status__dot--error'}`} />
+        <span>
+          {clean
+            ? `Balances agree across all ${reconciliation.checked} rows.`
+            : `${reconciliation.mismatches} of ${reconciliation.checked} rows do not match the statement balance — each becomes a balance adjustment.`}
+        </span>
+      </div>
+
+      {reconciliation.firstMismatch && (
+        <span className="dim mono reconcile__detail">
+          row {reconciliation.firstMismatch.row}: balance moved{' '}
+          {formatMoney(reconciliation.firstMismatch.expectedMinor, currency)} but the row says{' '}
+          {formatMoney(reconciliation.firstMismatch.actualMinor, currency)}
+        </span>
+      )}
+
+      {reconciliation.impliedOpeningBalanceMinor !== null && (
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={anchor}
+            onChange={(event) => onAnchorChange(event.target.checked)}
+          />
+          <span className="label">
+            set opening balance to{' '}
+            {formatMoney(reconciliation.impliedOpeningBalanceMinor, currency)}
+          </span>
+        </label>
+      )}
     </div>
   );
 }

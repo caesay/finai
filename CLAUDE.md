@@ -32,6 +32,31 @@ cannot desynchronise a balance.
 **Timestamps are ISO-8601 strings** so they round-trip identically through
 SQLite and Postgres.
 
+## CSV import
+
+The assistant's only job is naming columns; `import/mapping.ts` does the
+conversion mechanically, so the preview is exactly what gets written and a
+column name the model invented is dropped rather than trusted.
+
+When a statement carries a running balance, that balance is treated as the
+truth:
+
+- It is stored per transaction as `statementBalanceMinor` — the bank's own
+  figure, never recomputed.
+- It anchors the account's `openingBalanceMinor` to the balance before the
+  earliest row, so the derived balance agrees with the bank.
+- Where a row's amount does not explain the step between two balances,
+  something upstream is missing or duplicated, and the import inserts a
+  `kind: 'adjustment'` transaction carrying the difference. Those render red;
+  they are never silently absorbed.
+- It stands in as a dedupe key when the file has no reference column, since no
+  two rows leave an account at the same figure on the same day for the same
+  amount. Without a balance column rows stay unkeyed, so re-importing an
+  overlapping statement will duplicate them.
+
+A separately billed fee is folded into the transaction amount, because that is
+what actually left the account and it is what makes the balance reconcile.
+
 ## Database
 
 SQLite through Drizzle, opened in `apps/server/src/db/client.ts`. Migrations are
