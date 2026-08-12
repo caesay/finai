@@ -21,6 +21,9 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
         : { target: 'pino-pretty', options: { translateTime: 'HH:MM:ss', ignore: 'pid,hostname' } },
     },
     trustProxy: true,
+    // CSV uploads arrive as a JSON string body; the default 1 MB cap is well
+    // under a year of statements.
+    bodyLimit: 25 * 1024 * 1024,
   });
 
   // Fastify rejects `Content-Type: application/json` with an empty body, which

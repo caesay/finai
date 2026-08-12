@@ -10,6 +10,7 @@ import {
   listTransactions,
   updateTransaction,
 } from '../api/finance.js';
+import { ImportDialog } from '../components/ImportDialog.js';
 import { PageHeader } from '../components/Shell.js';
 import { formatDate, formatMoney } from '../lib/money.js';
 
@@ -29,6 +30,7 @@ export function TransactionsPage() {
   const query = queryFromParams(searchParams);
 
   const [searchDraft, setSearchDraft] = useState(query.search ?? '');
+  const [isImporting, setImporting] = useState(false);
 
   // Debounce typing so each keystroke does not hit the API.
   useEffect(() => {
@@ -159,7 +161,25 @@ export function TransactionsPage() {
             ? `Filtered to ${activeAccount.bank} — ${activeAccount.name}.`
             : 'Every transaction across all accounts.'
         }
+        actions={
+          <button
+            type="button"
+            className="button"
+            disabled={(accounts.data ?? []).length === 0}
+            onClick={() => setImporting(true)}
+          >
+            import csv
+          </button>
+        }
       />
+
+      {isImporting && accounts.data && (
+        <ImportDialog
+          accounts={accounts.data}
+          initialAccountId={query.accountId}
+          onClose={() => setImporting(false)}
+        />
+      )}
 
       <div className="filters">
         <input
