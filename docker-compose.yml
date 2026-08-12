@@ -1,0 +1,19 @@
+services:
+  finai:
+    image: ghcr.io/caesay/finai:latest
+    # Uncomment to build locally instead of pulling from GHCR:
+    # build: .
+    container_name: finai
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      LOG_LEVEL: info
+      CODEX_HOME: /data/codex
+    volumes:
+      # Application data (database, uploads) and Codex credentials.
+      # Codex auth lives in ./data/codex so `codex login` only has to run once:
+      #   docker compose exec -it finai codex login
+      - ./data:/data

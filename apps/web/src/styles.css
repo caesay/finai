@@ -1,0 +1,254 @@
+/*
+ * finai design tokens — dark, technical, monospace-leaning.
+ * Hairline white borders, a single cyan accent, uppercase tracked labels.
+ */
+:root {
+  --bg: #000000;
+  --bg-raised: #0a0c0e;
+  --bg-inset: #111417;
+
+  --fg: #f3f4f6;
+  --fg-dim: #9ca3af;
+  --fg-faint: #6b7280;
+
+  --accent: #22d3ee;
+  --accent-dim: #22d3ee99;
+  --accent-border: #22d3ee80;
+  --accent-wash: #22d3ee14;
+
+  --danger: #f87171;
+  --success: #4ade80;
+
+  --line: #ffffff0d;
+  --line-strong: #ffffff26;
+
+  --radius: 2px;
+  --track-wide: 0.3em;
+  --track-tight: -0.025em;
+
+  --font-mono:
+    ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- layout ---------- */
+
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.shell__header {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.shell__main {
+  flex: 1;
+  width: 100%;
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+
+.shell__footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+/* ---------- type ---------- */
+
+.wordmark {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+  color: var(--fg);
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+}
+
+.title {
+  margin: 0 0 0.5rem;
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: var(--track-tight);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+.dim {
+  color: var(--fg-dim);
+}
+
+/* ---------- panel ---------- */
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+}
+
+.panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.625rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.panel__body {
+  padding: 1.25rem 1rem;
+}
+
+.readout {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: var(--accent);
+  word-break: break-word;
+}
+
+.readout--error {
+  color: var(--danger);
+}
+
+.readout--pending {
+  color: var(--fg-faint);
+}
+
+/* ---------- status dot ---------- */
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--fg-faint);
+}
+
+.status__dot--ok {
+  background: var(--success);
+}
+
+.status__dot--error {
+  background: var(--danger);
+}
+
+.status__dot--pending {
+  background: var(--accent);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status__dot--pending {
+    animation: none;
+  }
+}
+
+/* ---------- button ---------- */
+
+.button {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius);
+  background: var(--accent-wash);
+  color: var(--accent);
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--accent);
+  color: #000;
+}
+
+.button:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* ---------- definition rows ---------- */
+
+.rows {
+  display: grid;
+  gap: 0;
+  margin: 1.5rem 0 0;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.row:last-child {
+  border-bottom: 1px solid var(--line);
+}
