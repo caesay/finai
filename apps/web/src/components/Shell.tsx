@@ -6,6 +6,7 @@ import {
   AuditIcon,
   AutomationsIcon,
   CategoriesIcon,
+  ConnectionsIcon,
   OverviewIcon,
   TransactionsIcon,
 } from './icons.js';
@@ -14,6 +15,7 @@ const NAV_ITEMS = [
   { to: '/', label: 'Overview', Icon: OverviewIcon, end: true },
   { to: '/accounts', label: 'Accounts', Icon: AccountsIcon, end: false },
   { to: '/transactions', label: 'Transactions', Icon: TransactionsIcon, end: false },
+  { to: '/connections', label: 'Connections', Icon: ConnectionsIcon, end: false },
   { to: '/categories', label: 'Categories', Icon: CategoriesIcon, end: false },
   { to: '/automations', label: 'Automations', Icon: AutomationsIcon, end: false },
   { to: '/audit', label: 'Audit', Icon: AuditIcon, end: false },

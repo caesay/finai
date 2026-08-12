@@ -1,4 +1,4 @@
-import type { AccountType } from '@finai/shared';
+import type { AccountConnection, AccountType } from '@finai/shared';
 import { ACCOUNT_TYPES } from '@finai/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 
 import { createAccount, deleteAccount, listAccounts } from '../api/finance.js';
 import { PageHeader } from '../components/Shell.js';
-import { formatMoney, parseMoney } from '../lib/money.js';
+import { formatDateTime, formatMoney, parseMoney } from '../lib/money.js';
 
 /** Simple list of accounts — the rich table lives on the Transactions page. */
 export function AccountsPage() {
@@ -50,6 +50,7 @@ export function AccountsPage() {
               <span className="label">
                 {account.type} · {account.transactionCount} transactions
               </span>
+              {account.connection && <ConnectionStatus connection={account.connection} />}
             </div>
 
             <div className="card__side">
@@ -87,6 +88,43 @@ export function AccountsPage() {
 
       {remove.isError && <p className="error">{remove.error.message}</p>}
     </>
+  );
+}
+
+/**
+ * How the account's feed is doing. Open banking consent lasts 90 days and then
+ * quietly stops returning data, so an account that is no longer importing has
+ * to say so here rather than just looking like a quiet month.
+ */
+function ConnectionStatus({ connection }: { connection: AccountConnection }) {
+  const expired = connection.status === 'disconnected';
+  const broken = connection.status === 'error';
+
+  return (
+    <Link className="account-link" to="/connections">
+      <span className="status">
+        <span
+          className={`status__dot ${
+            connection.status === 'active'
+              ? 'status__dot--ok'
+              : expired || broken
+                ? 'status__dot--error'
+                : 'status__dot--pending'
+          }`}
+        />
+        <span className="label">
+          {connection.connectionName} · {connection.institutionName}
+          {expired
+            ? ' · reconnect at the provider'
+            : broken
+              ? ' · not importing'
+              : connection.lastSyncedAt
+                ? ` · synced ${formatDateTime(connection.lastSyncedAt)}`
+                : ' · not synced yet'}
+        </span>
+      </span>
+      {connection.error && <span className="error account-link__error">{connection.error}</span>}
+    </Link>
   );
 }
 

@@ -811,6 +811,38 @@ tr:hover .icon-button,
   }
 }
 
+/* ---------- connections ---------- */
+
+/* The settings form drops onto its own line under the card it belongs to. */
+.card--wrap {
+  flex-wrap: wrap;
+}
+
+.connection-settings {
+  flex-basis: 100%;
+  margin: 0.5rem 0 0;
+}
+
+.connection-card__failure {
+  display: block;
+}
+
+.account-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.account-link:hover .label {
+  color: var(--fg);
+}
+
+.account-link__error {
+  max-width: 42ch;
+}
+
 /* ---------- button ---------- */
 
 .button {

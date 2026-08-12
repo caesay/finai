@@ -7,6 +7,8 @@ import { AccountsPage } from './pages/AccountsPage.js';
 import { AuditPage } from './pages/AuditPage.js';
 import { AutomationsPage } from './pages/AutomationsPage.js';
 import { CategoriesPage } from './pages/CategoriesPage.js';
+import { ConnectionReviewPage } from './pages/ConnectionReviewPage.js';
+import { ConnectionsPage } from './pages/ConnectionsPage.js';
 import { OverviewPage } from './pages/OverviewPage.js';
 import { TransactionsPage } from './pages/TransactionsPage.js';
 
@@ -18,6 +20,8 @@ export function App() {
           <Route path="/" element={<OverviewPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
+          <Route path="/connections" element={<ConnectionsPage />} />
+          <Route path="/connections/:id/review" element={<ConnectionReviewPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/automations" element={<AutomationsPage />} />
           <Route path="/audit" element={<AuditPage />} />
